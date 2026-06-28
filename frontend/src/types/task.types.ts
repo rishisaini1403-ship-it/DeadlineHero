@@ -12,6 +12,15 @@ export interface Task {
   tags: string[];
   aiRecommended: boolean;
   aiPriorityScore: number;
+  riskScore: number;
+  riskFactors: string[];
+  subtasks: Array<{
+    title: string;
+    description: string;
+    completed: boolean;
+    order: number;
+  }>;
+  isAIBrokenDown: boolean;
   createdAt: string;
   updatedAt: string;
 }

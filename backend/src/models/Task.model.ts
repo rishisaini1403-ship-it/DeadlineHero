@@ -14,6 +14,15 @@ export interface ITask extends Document {
   tags: string[];
   aiRecommended: boolean;
   aiPriorityScore: number;
+  riskScore: number;
+  riskFactors: string[];
+  subtasks: Array<{
+    title: string;
+    description: string;
+    completed: boolean;
+    order: number;
+  }>;
+  isAIBrokenDown: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -77,6 +86,29 @@ const TaskSchema = new Schema<ITask>(
       default: 0,
       min: 0,
       max: 100,
+    },
+    riskScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    riskFactors: {
+      type: [String],
+      default: [],
+    },
+    subtasks: {
+      type: [{
+        title: { type: String, required: true },
+        description: { type: String, default: '' },
+        completed: { type: Boolean, default: false },
+        order: { type: Number, required: true },
+      }],
+      default: [],
+    },
+    isAIBrokenDown: {
+      type: Boolean,
+      default: false,
     },
   },
   {

@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 
 // Layout
 import Layout from "./components/Layout";
@@ -19,6 +20,9 @@ import Tasks from "./pages/Tasks";
 import Calendar from "./pages/Calendar";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import AIAssistant from "./pages/AIAssistant";
+import FocusMode from "./pages/FocusMode";
+import StudyGroup from "./pages/StudyGroup";
 
 // Protected Route
 const ProtectedRoute: React.FC<{
@@ -64,9 +68,10 @@ const PublicRoute: React.FC<{
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <Toaster position="top-right" />
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <Toaster position="top-right" />
 
         <Routes>
           {/* Public Routes */}
@@ -120,7 +125,27 @@ const App: React.FC = () => {
               path="/settings"
               element={<Settings />}
             />
+          
+            <Route
+              path="/ai-assistant"
+              element={<AIAssistant />}
+            />
+          
+            <Route
+              path="/study-group"
+              element={<StudyGroup />}
+            />
           </Route>
+          
+          {/* Focus Mode - Full screen, no layout */}
+          <Route
+            path="/focus-mode"
+            element={
+              <ProtectedRoute>
+                <FocusMode />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Redirects */}
           <Route
@@ -133,8 +158,9 @@ const App: React.FC = () => {
             element={<Navigate to="/dashboard" />}
           />
         </Routes>
-      </Router>
-    </AuthProvider>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

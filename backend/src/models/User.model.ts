@@ -17,6 +17,20 @@ export interface IUser extends Document {
     reminderTime: number; // hours before deadline
     theme: 'light' | 'dark';
   };
+  completionHistory: Array<{
+    date: Date;
+    tasksCompleted: number;
+    hoursWorked: number;
+  }>;
+  productivityData: Array<{
+    date: Date;
+    score: number;
+  }>;
+  sharedDeadlines: Array<{
+    userId: mongoose.Types.ObjectId;
+    deadlineId: mongoose.Types.ObjectId;
+    sharedAt: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -87,6 +101,29 @@ const UserSchema = new Schema<IUser>(
         enum: ['light', 'dark'],
         default: 'light',
       },
+    },
+    completionHistory: {
+      type: [{
+        date: { type: Date, required: true },
+        tasksCompleted: { type: Number, default: 0 },
+        hoursWorked: { type: Number, default: 0 },
+      }],
+      default: [],
+    },
+    productivityData: {
+      type: [{
+        date: { type: Date, required: true },
+        score: { type: Number, required: true },
+      }],
+      default: [],
+    },
+    sharedDeadlines: {
+      type: [{
+        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        deadlineId: { type: Schema.Types.ObjectId, ref: 'Deadline', required: true },
+        sharedAt: { type: Date, default: Date.now },
+      }],
+      default: [],
     },
   },
   {

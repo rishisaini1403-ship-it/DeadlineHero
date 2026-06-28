@@ -17,6 +17,7 @@ import deadlineRoutes from './routes/deadline.routes';
 import scheduleRoutes from './routes/schedule.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import dashboardRoutes from "./routes/dashboard.routes";
+import aiRoutes from './routes/ai.routes';
 
 // Load environment variables
 dotenv.config();
@@ -77,6 +78,7 @@ app.use('/api/deadlines', deadlineRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Error handling
 app.use(notFound);
