@@ -3,6 +3,10 @@ import { verifyToken, extractTokenFromHeader } from '../utils/jwt';
 import User from '../models/User.model';
 
 export interface AuthRequest extends Request {
+  body: any;
+  params: any;
+  query: any;
+  headers: any;
   user?: any;
 }
 
