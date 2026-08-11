@@ -2,6 +2,7 @@ import { Response } from 'express';
 import User from '../models/User.model';
 import { generateToken } from '../utils/jwt';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { sendWelcomeEmail } from '../services/email.service';
 
 export const register = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -21,6 +22,11 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
       email,
       password,
     });
+
+    // Fire-and-forget welcome email (non-blocking, non-fatal)
+    sendWelcomeEmail(user._id.toString()).catch((err) =>
+      console.error('Welcome email failed:', err)
+    );
 
     const token = generateToken({
       userId: user._id.toString(),
