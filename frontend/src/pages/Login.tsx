@@ -22,6 +22,9 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Social login (Google/GitHub) is not implemented yet - hide until OAuth is built
+  const showSocialLogin = false;
+
   const {
     register,
     handleSubmit,
@@ -212,20 +215,22 @@ const Login: React.FC = () => {
               </motion.button>
             </form>
 
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+            {/* Divider + Social Login (hidden until OAuth is implemented) */}
+            {showSocialLogin && (
+              <>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white/80 dark:bg-gray-800/80 text-gray-500">
+                    Or continue with
+                  </span>
+                </div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white/80 dark:bg-gray-800/80 text-gray-500">
-                  Or continue with
-                </span>
-              </div>
-            </div>
 
-            {/* Social Login */}
-            <div className="grid grid-cols-2 gap-4">
+              {/* Social Login */}
+              <div className="grid grid-cols-2 gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -262,6 +267,8 @@ const Login: React.FC = () => {
                 GitHub
               </motion.button>
             </div>
+              </>
+            )}
 
             {/* Sign Up Link */}
             <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
