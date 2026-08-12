@@ -1,16 +1,87 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { FiUser, FiBell, FiHelpCircle, FiZap, FiSettings } from 'react-icons/fi';
+import { FiUser, FiBell, FiHelpCircle, FiZap, FiSettings, FiCamera } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { authService } from '../services/auth.service';
 
 type TabType = 'profile' | 'appearance' | 'notifications' | 'productivity' | 'help';
 
 const Settings: React.FC = () => {
   const { theme, toggleTheme, accentColor, setAccentColor } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
+
+  const [name, setName] = useState(user?.name || '');
+  const [avatar, setAvatar] = useState(user?.avatar || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatar(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveProfile = async () => {
+    if (name.trim().length < 2) {
+      toast.error('Name must be at least 2 characters');
+      return;
+    }
+    setSaving(true);
+    try {
+      await authService.updateProfile({ name, avatar });
+      await refreshUser();
+      toast.success('Profile updated!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const changePassword = async () => {
+    if (!currentPassword) {
+      toast.error('Enter your current password');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    setSaving(true);
+    try {
+      await authService.changePassword({ currentPassword, newPassword });
+      toast.success('Password changed successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to change password');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: FiUser },
@@ -66,11 +137,28 @@ const Settings: React.FC = () => {
                   
                   {/* Avatar */}
                   <div className="flex items-center space-x-6">
-                    <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                      {user?.name?.charAt(0) || 'U'}
+                    <div className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-white text-3xl font-bold bg-gradient-to-br from-blue-600 to-purple-600">
+                      {avatar ? (
+                        <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        user?.name?.charAt(0) || 'U'
+                      )}
                     </div>
                     <div>
-                      <button className="btn-primary">Change Avatar</button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/gif,image/webp"
+                        className="hidden"
+                        onChange={handleAvatarChange}
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="btn-primary"
+                      >
+                        <FiCamera className="inline mr-2" />
+                        Change Avatar
+                      </button>
                       <p className="text-sm text-gray-500 mt-2">JPG, PNG or GIF. Max 2MB</p>
                     </div>
                   </div>
@@ -83,7 +171,8 @@ const Settings: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        defaultValue={user?.name || ''}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                         className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
                       />
                     </div>
@@ -94,28 +183,73 @@ const Settings: React.FC = () => {
                       </label>
                       <input
                         type="email"
-                        defaultValue={user?.email || ''}
-                        className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                        value={user?.email || ''}
+                        readOnly
+                        className="input-field opacity-60 cursor-not-allowed dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                        title="Email address cannot be changed"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        New Password
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="Leave blank to keep current"
-                        className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Email cannot be changed
+                      </p>
                     </div>
 
                     <button
-                      onClick={() => toast.success('Profile updated!')}
+                      onClick={saveProfile}
+                      disabled={saving}
                       className="btn-primary"
                     >
-                      Save Changes
+                      {saving ? 'Saving...' : 'Save Changes'}
                     </button>
+                  </div>
+
+                  {/* Change Password */}
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Change Password</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Current Password
+                        </label>
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="Enter current password"
+                          className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="At least 6 characters"
+                          className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Re-enter new password"
+                          className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                        />
+                      </div>
+                      <button
+                        onClick={changePassword}
+                        disabled={saving}
+                        className="btn-primary"
+                      >
+                        {saving ? 'Updating...' : 'Update Password'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

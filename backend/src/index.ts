@@ -50,7 +50,7 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // Body parser middleware
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // CORS

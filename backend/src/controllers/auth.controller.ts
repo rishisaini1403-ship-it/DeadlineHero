@@ -134,6 +134,43 @@ export const getProfile = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
+export const changePassword = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+      return;
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+      return;
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to change password',
+    });
+  }
+};
+
 export const updateProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const allowedUpdates = ['name', 'avatar', 'preferences'];
