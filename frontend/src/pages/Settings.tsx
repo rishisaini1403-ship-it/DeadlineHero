@@ -262,7 +262,7 @@ const Settings: React.FC = () => {
                   {/* Theme Toggle */}
                   <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
                     <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Theme</h3>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <button
                         onClick={() => theme !== 'light' && toggleTheme()}
                         className={`p-4 rounded-xl border-2 transition-all ${
@@ -284,10 +284,6 @@ const Settings: React.FC = () => {
                       >
                         <div className="text-3xl mb-2">🌙</div>
                         <p className="text-sm font-medium">Dark</p>
-                      </button>
-                      <button className="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 opacity-50 cursor-not-allowed">
-                        <div className="text-3xl mb-2">💻</div>
-                        <p className="text-sm font-medium">System</p>
                       </button>
                     </div>
                   </div>
