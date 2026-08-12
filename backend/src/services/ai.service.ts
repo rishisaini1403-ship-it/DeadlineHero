@@ -601,7 +601,7 @@ Provide a helpful, actionable response.`;
         estimatedHours: hours,
         priority: task.priority,
         timeSlot: `${currentHour}:00 - ${currentHour + hours}:00`,
-        reason: hours > 2 ? 'Deep work session' : 'Focused work block',
+        reason: this.generatePlanReason(task, hours),
       });
       currentHour += hours + 1; // 1 hour break
     });
@@ -609,14 +609,97 @@ Provide a helpful, actionable response.`;
     return schedule;
   }
 
+  private generatePlanReason(task: TaskData, hours: number): string {
+    const now = new Date();
+    const hoursUntilDue = (new Date(task.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60);
+    const title = task.title || 'this task';
+
+    if (hoursUntilDue <= 24) {
+      return `URGENT: "${title}" is due within 24 hours — complete now!`;
+    } else if (hoursUntilDue <= 48) {
+      return `"${title}" due soon — allocate ${hours}h to stay on track`;
+    } else if (task.priority === 'urgent' || task.priority === 'high') {
+      return `High-priority: "${title}" needs ${hours}h of focused work`;
+    } else if (hours >= 3) {
+      return `Deep work on "${title}" — ${hours}h block for meaningful progress`;
+    } else {
+      return `Quick session on "${title}" — ${hours}h to move forward`;
+    }
+  }
+
   private mockTaskBreakdown(title: string, description: string, estimatedHours: number): TaskBreakdown {
-    const subtasks: Subtask[] = [
-      { title: 'Research & Planning', description: 'Gather requirements and plan approach', estimatedHours: Math.round(estimatedHours * 0.2), order: 1 },
-      { title: 'Design & Architecture', description: 'Create design and structure', estimatedHours: Math.round(estimatedHours * 0.2), order: 2 },
-      { title: 'Core Implementation', description: 'Build the main functionality', estimatedHours: Math.round(estimatedHours * 0.3), order: 3 },
-      { title: 'Testing & Debugging', description: 'Test thoroughly and fix issues', estimatedHours: Math.round(estimatedHours * 0.2), order: 4 },
-      { title: 'Documentation & Polish', description: 'Write docs and finalize', estimatedHours: Math.round(estimatedHours * 0.1), order: 5 },
-    ];
+    const lowerTitle = title.toLowerCase();
+    const lowerDesc = description.toLowerCase();
+    const isCoding = /code|program|develop|build|implement|api|database|backend|frontend|app|website|script/.test(lowerTitle + lowerDesc);
+    const isWriting = /write|essay|report|paper|article|blog|document|read/.test(lowerTitle + lowerDesc);
+    const isStudying = /study|learn|review|exam|quiz|test|chapter|lecture|note/.test(lowerTitle + lowerDesc);
+    const isDesign = /design|ui|ux|figma|prototype|wireframe|mockup/.test(lowerTitle + lowerDesc);
+    const isResearch = /research|investigate|analyze|survey|literature|data/.test(lowerTitle + lowerDesc);
+
+    const subtasks: Subtask[] = [];
+    let order = 1;
+
+    if (isCoding) {
+      subtasks.push(
+        { title: 'Requirements & Setup', description: 'Define scope, set up repo/environment', estimatedHours: Math.round(estimatedHours * 0.15), order: order++ },
+        { title: 'Core Logic Implementation', description: 'Write the main algorithms and business logic', estimatedHours: Math.round(estimatedHours * 0.4), order: order++ },
+        { title: 'Integration & API', description: 'Connect components, build endpoints', estimatedHours: Math.round(estimatedHours * 0.2), order: order++ },
+        { title: 'Testing & Debugging', description: 'Write tests, fix bugs, verify edge cases', estimatedHours: Math.round(estimatedHours * 0.15), order: order++ },
+        { title: 'Code Review & Deploy', description: 'Final review, documentation, deployment', estimatedHours: Math.round(estimatedHours * 0.1), order: order++ }
+      );
+    } else if (isWriting) {
+      subtasks.push(
+        { title: 'Outline & Research', description: 'Create structure, gather sources', estimatedHours: Math.round(estimatedHours * 0.25), order: order++ },
+        { title: 'First Draft', description: 'Write the main content without editing', estimatedHours: Math.round(estimatedHours * 0.4), order: order++ },
+        { title: 'Revision & Editing', description: 'Improve clarity, flow, and arguments', estimatedHours: Math.round(estimatedHours * 0.2), order: order++ },
+        { title: 'Proofreading', description: 'Check grammar, citations, formatting', estimatedHours: Math.round(estimatedHours * 0.1), order: order++ },
+        { title: 'Final Polish', description: 'Final review and submission prep', estimatedHours: Math.round(estimatedHours * 0.05), order: order++ }
+      );
+    } else if (isStudying) {
+      subtasks.push(
+        { title: 'Gather Materials', description: 'Collect notes, textbooks, resources', estimatedHours: Math.round(estimatedHours * 0.1), order: order++ },
+        { title: 'Active Review Sessions', description: 'Spaced repetition, practice problems', estimatedHours: Math.round(estimatedHours * 0.5), order: order++ },
+        { title: 'Mock Tests/Quizzes', description: 'Simulate exam conditions, identify gaps', estimatedHours: Math.round(estimatedHours * 0.2), order: order++ },
+        { title: 'Weak Area Focus', description: 'Deep dive into problem topics', estimatedHours: Math.round(estimatedHours * 0.15), order: order++ },
+        { title: 'Final Review', description: 'Quick recap of key concepts', estimatedHours: Math.round(estimatedHours * 0.05), order: order++ }
+      );
+    } else if (isDesign) {
+      subtasks.push(
+        { title: 'Requirements & Inspiration', description: 'Understand brief, collect references', estimatedHours: Math.round(estimatedHours * 0.15), order: order++ },
+        { title: 'Wireframes & Concepts', description: 'Low-fidelity layouts and explorations', estimatedHours: Math.round(estimatedHours * 0.25), order: order++ },
+        { title: 'High-Fidelity Design', description: 'Detailed mockups, design system', estimatedHours: Math.round(estimatedHours * 0.35), order: order++ },
+        { title: 'Prototype & Feedback', description: 'Interactive prototype, stakeholder review', estimatedHours: Math.round(estimatedHours * 0.15), order: order++ },
+        { title: 'Handoff Assets', description: 'Export specs, components, documentation', estimatedHours: Math.round(estimatedHours * 0.1), order: order++ }
+      );
+    } else if (isResearch) {
+      subtasks.push(
+        { title: 'Define Research Questions', description: 'Clarify scope and objectives', estimatedHours: Math.round(estimatedHours * 0.1), order: order++ },
+        { title: 'Literature Search', description: 'Find and collect relevant sources', estimatedHours: Math.round(estimatedHours * 0.3), order: order++ },
+        { title: 'Analysis & Synthesis', description: 'Extract insights, compare findings', estimatedHours: Math.round(estimatedHours * 0.35), order: order++ },
+        { title: 'Draft Report', description: 'Structure findings and arguments', estimatedHours: Math.round(estimatedHours * 0.15), order: order++ },
+        { title: 'Finalize & Cite', description: 'Polish, format references, submit', estimatedHours: Math.round(estimatedHours * 0.1), order: order++ }
+      );
+    } else {
+      // Generic fallback — but still varied based on hours
+      const steps = estimatedHours > 6 ? 5 : estimatedHours > 3 ? 4 : 3;
+      const baseHours = Math.floor(estimatedHours / steps);
+      const remainder = estimatedHours % steps;
+      const genericSteps = [
+        { title: 'Planning & Preparation', description: 'Break down the task and gather resources' },
+        { title: 'Execution Phase 1', description: 'Complete the first major portion' },
+        { title: 'Execution Phase 2', description: 'Continue and complete the work' },
+        { title: 'Review & Refine', description: 'Check quality and make improvements' },
+        { title: 'Finalize & Deliver', description: 'Wrap up and submit/complete' }
+      ];
+      for (let i = 0; i < steps; i++) {
+        subtasks.push({
+          title: genericSteps[i].title,
+          description: genericSteps[i].description,
+          estimatedHours: baseHours + (i < remainder ? 1 : 0),
+          order: order++
+        });
+      }
+    }
 
     return {
       subtasks,
@@ -712,18 +795,53 @@ Provide a helpful, actionable response.`;
   }
 
   private mockWeeklyReport(stats: any): WeeklyReport {
+    const completed = stats.completedTasks || 0;
+    const missed = stats.missedTasks || 0;
+    const streak = stats.streak || 0;
+    const total = completed + missed;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const productivityChange = Math.round((completed - missed) * 2.5); // rough heuristic
+
+    let insights = '';
+    let nextWeekFocus = '';
+    const achievements: string[] = [];
+
+    // Dynamic achievements
+    if (streak >= 7) achievements.push(`🔥 Amazing ${streak}-day streak!`);
+    else if (streak >= 3) achievements.push(`🔥 ${streak}-day streak maintained`);
+    if (completed >= 10) achievements.push(`✅ Completed ${completed} tasks this week`);
+    else if (completed >= 5) achievements.push(`✅ Completed ${completed} tasks this week`);
+    else if (completed > 0) achievements.push(`✅ Finished ${completed} task${completed === 1 ? '' : 's'}`);
+    if (missed === 0 && completed > 0) achievements.push('🎯 Zero missed deadlines!');
+    if (completionRate >= 90) achievements.push(`📈 ${completionRate}% completion rate`);
+    if (streak > (stats.prevStreak || 0)) achievements.push('📈 Streak increased!');
+
+    // Dynamic insights
+    if (completed === 0) {
+      insights = 'No tasks completed this week. Consider setting smaller, achievable goals to build momentum.';
+      nextWeekFocus = 'Start with just 1-2 small tasks daily. Consistency beats intensity.';
+    } else if (missed > completed) {
+      insights = `You completed ${completed} but missed ${missed} tasks. Overcommitment may be the issue.`;
+      nextWeekFocus = 'Prioritize ruthlessly — do fewer things, but finish them. Use the Risk Predictor.';
+    } else if (missed > 0) {
+      insights = `Good progress with ${completed} done, but ${missed} slipped. Identify what blocked them.`;
+      nextWeekFocus = 'Review missed tasks — reschedule or delegate. Aim for zero misses next week.';
+    } else if (completionRate >= 90 && completed >= 5) {
+      insights = `Excellent week! ${completed} completed, zero missed. Your planning is working.`;
+      nextWeekFocus = 'Maintain this rhythm. Try Focus Mode for deep work on complex tasks.';
+    } else {
+      insights = `Solid week: ${completed} tasks done${missed > 0 ? `, ${missed} missed` : ''}. Consistency is building.`;
+      nextWeekFocus = `Aim for ${Math.max(completed + 2, 5)}+ tasks next week. Keep the streak alive!`;
+    }
+
     return {
-      completedTasks: stats.completedTasks || 8,
-      missedTasks: stats.missedTasks || 1,
-      streak: stats.streak || 5,
-      productivityChange: 18,
-      achievements: [
-        '🔥 Maintained a 5-day streak!',
-        '✅ Completed 8 tasks this week',
-        '📈 Productivity increased by 18%',
-      ],
-      insights: 'You performed well this week! Your consistency is paying off. Focus on reducing missed deadlines next week.',
-      nextWeekFocus: 'Aim to complete 10+ tasks and maintain your streak. Consider using Focus Mode for deep work sessions.',
+      completedTasks: completed,
+      missedTasks: missed,
+      streak,
+      productivityChange: Math.max(-50, Math.min(50, productivityChange)),
+      achievements,
+      insights,
+      nextWeekFocus,
     };
   }
 
@@ -733,49 +851,120 @@ Provide a helpful, actionable response.`;
       .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
       .slice(0, 5);
 
+    const prioritizedTasks = sorted.map((task, index) => ({
+      taskId: task._id || '',
+      title: task.title || `Task ${index + 1}`,
+      priority: index + 1,
+      timeAllocation: `${Math.max(1, Math.round(task.estimatedHours))} hours`,
+      reason: index === 0 ? 'Most urgent - due soonest' : `Priority #${index + 1}`,
+    }));
+
+    // Build contextual study plan
+    const studyPlan: string[] = [];
+    const urgentCount = tasks.filter(t => {
+      const h = (new Date(t.dueDate).getTime() - Date.now()) / (1000 * 60 * 60);
+      return h <= 48 && t.status !== 'completed';
+    }).length;
+    const totalHours = tasks
+      .filter(t => t.status !== 'completed')
+      .reduce((sum, t) => sum + (t.estimatedHours || 0), 0);
+
+    studyPlan.push('1. 🚫 Eliminate distractions — phone on Do Not Disturb, close extra tabs');
+    studyPlan.push('2. ⏱️ Use Pomodoro: 25 min focus, 5 min break — repeat 4x then 30 min break');
+
+    if (urgentCount > 0) {
+      studyPlan.push(`3. 🔴 ${urgentCount} task${urgentCount === 1 ? ' is' : 's are'} due within 48h — do these FIRST, nothing else`);
+    } else {
+      studyPlan.push('3. 🎯 Pick the single most important task and finish it before moving on');
+    }
+
+    if (totalHours > 20) {
+      studyPlan.push('4. ⚡ Workload is high — skip perfection, aim for "good enough" on each task');
+    } else {
+      studyPlan.push('4. 📝 Break each task into 1-2 hour chunks — crossing off builds momentum');
+    }
+
+    studyPlan.push('5. 💧 Basics: hydrate, eat protein, 20-min walk, sleep 7h — you cannot skip these');
+
     return {
-      prioritizedTasks: sorted.map((task, index) => ({
-        taskId: task._id || '',
-        title: task.title || `Task ${index + 1}`,
-        priority: index + 1,
-        timeAllocation: `${Math.max(1, Math.round(task.estimatedHours))} hours`,
-        reason: index === 0 ? 'Most urgent - due soonest' : `Priority #${index + 1}`,
-      })),
-      studyPlan: [
-        '1. Eliminate all distractions (phone, social media)',
-        '2. Use Pomodoro technique: 25 min work, 5 min break',
-        '3. Focus ONLY on the task at hand',
-        '4. Skip perfection - aim for completion',
-        '5. Take care of basics: eat, hydrate, sleep',
-      ],
+      prioritizedTasks,
+      studyPlan,
       criticalWarning: '🚨 EMERGENCY MODE ACTIVATED: Focus on survival, not perfection. Complete what you can, then reassess.',
     };
   }
 
   private mockChatResponse(message: string, context: any): string {
     const lowerMessage = message.toLowerCase();
+    const pending = context?.pendingTasks || 0;
+    const upcoming = context?.upcomingDeadlines || 0;
+    const streak = context?.userStreak || 0;
+    const level = context?.userLevel || 1;
 
-    if (lowerMessage.includes('schedule') || lowerMessage.includes('plan')) {
-      return 'I recommend using the Smart Daily Planner feature! It will automatically create an optimal schedule based on your pending tasks and available time. Would you like me to generate one for you?';
+    // Context-aware greeting for first-time/empty state
+    if (pending === 0 && upcoming === 0) {
+      if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+        return `Hey! 👋 You're all caught up — no pending tasks or upcoming deadlines. Enjoy the calm! Want help planning ahead or setting up a new project?`;
+      }
+      return `You're currently task-free! 🎉 No pending work, no looming deadlines. Perfect time to plan a new project or just relax. What would you like to do?`;
     }
 
-    if (lowerMessage.includes('stress') || lowerMessage.includes('overwhelm') || lowerMessage.includes('burnout')) {
-      return 'It sounds like you might be experiencing high workload pressure. I suggest: 1) Try the Burnout Detector to assess your risk, 2) Use Emergency Mode if deadlines are critical, 3) Remember to take breaks - your health comes first!';
+    // Schedule/planning — now context-aware
+    if (lowerMessage.includes('schedule') || lowerMessage.includes('plan') || lowerMessage.includes('today')) {
+      if (pending > 0) {
+        return `You have ${pending} pending task${pending === 1 ? '' : 's'} and ${upcoming} upcoming deadline${upcoming === 1 ? '' : 's'}. The Smart Daily Planner can create a time-blocked schedule for your available hours. Want me to generate one?`;
+      }
+      return 'No pending tasks to schedule! You\'re free to plan something new or take a break.';
     }
 
-    if (lowerMessage.includes('break') || lowerMessage.includes('split') || lowerMessage.includes('divide')) {
-      return 'Great idea! Use the AI Task Breakdown feature on any task. Just click the "Break Down" button, and I\'ll split it into manageable subtasks with estimated time for each.';
+    // Stress/burnout — context-aware
+    if (lowerMessage.includes('stress') || lowerMessage.includes('overwhelm') || lowerMessage.includes('burnout') || lowerMessage.includes('anxious')) {
+      if (upcoming > 5) {
+        return `I see ${upcoming} deadlines this week and ${pending} active tasks — that IS a lot. Try: 1) Burnout Detector to quantify risk, 2) Emergency Mode if things are critical, 3) Even 10 min breaks help. Your streak of ${streak} days shows you can handle pressure!`;
+      }
+      if (pending > 8) {
+        return `With ${pending} tasks in progress, it's easy to feel scattered. Consider: 1) Emergency Mode to ruthlessly prioritize, 2) Break down the largest task, 3) Your Level ${level} streak of ${streak} days proves consistency works.`;
+      }
+      return 'Feeling overwhelmed is normal. Quick wins: 1) Write down everything, 2) Pick ONE thing to finish now, 3) Use Pomodoro (25/5). You\'ve maintained a ' + streak + '-day streak — you\'re more capable than you know!';
     }
 
-    if (lowerMessage.includes('what should i do') || lowerMessage.includes('where to start') || lowerMessage.includes('next')) {
-      return 'Click the "What Should I Do Next?" button on your Dashboard! I\'ll analyze all your tasks and recommend the most important one to work on right now, based on deadlines, priority, and your current workload.';
+    // Break down tasks
+    if (lowerMessage.includes('break') || lowerMessage.includes('split') || lowerMessage.includes('divide') || lowerMessage.includes('subtask')) {
+      if (pending > 0) {
+        return `You have ${pending} task${pending === 1 ? '' : 's'} that could be broken down. The AI Task Breakdown works best on tasks 3+ hours — it creates tailored subtasks (e.g., coding tasks get "Setup → Core Logic → Testing", writing gets "Outline → Draft → Edit"). Which task should I break down?`;
+      }
+      return 'No tasks to break down right now! Create a task first, then I can help split it into manageable pieces.';
     }
 
-    if (lowerMessage.includes('risk') || lowerMessage.includes('miss') || lowerMessage.includes('deadline')) {
-      return 'I can predict your risk of missing any deadline! Each task shows a risk score. Green = safe, Yellow = caution, Red = critical. Check your Tasks page or ask me about a specific task.';
+    // Next action / what to do
+    if (lowerMessage.includes('what should i do') || lowerMessage.includes('where to start') || lowerMessage.includes('next') || lowerMessage.includes('priority')) {
+      if (pending > 0) {
+        return `Click "What Should I Do Next?" on your Dashboard — I'll analyze your ${pending} pending task${pending === 1 ? '' : 's'} (${upcoming} deadline${upcoming === 1 ? '' : 's'} this week) and recommend the single most impactful task based on urgency, priority, and your current workload.`;
+      }
+      return 'Nothing pending! You\'re free to start something new or enjoy the break.';
     }
 
-    return 'I\'m here to help you manage your deadlines! You can ask me about: scheduling tasks, breaking down large projects, managing stress, prioritizing work, or predicting deadline risks. What would you like help with?';
+    // Risk/deadline
+    if (lowerMessage.includes('risk') || lowerMessage.includes('miss') || lowerMessage.includes('deadline') || lowerMessage.includes('late')) {
+      if (upcoming > 0) {
+        return `You have ${upcoming} upcoming deadline${upcoming === 1 ? '' : 's'} and ${pending} active tasks. Each task shows a risk score (Green=safe, Yellow=caution, Red=critical). The Risk Predictor analyzes due date, priority, and effort. Want me to check a specific task?`;
+      }
+      return 'No upcoming deadlines to worry about! 🎉 All clear on the risk front.';
+    }
+
+    // Weekly report
+    if (lowerMessage.includes('week') || lowerMessage.includes('report') || lowerMessage.includes('progress') || lowerMessage.includes('how am i')) {
+      return `Your weekly report shows: streak ${streak}, level ${level}, ${pending} active tasks, ${upcoming} deadlines this week. The full Weekly Report gives completion rate, achievements, and next week's focus. Want me to generate it?`;
+    }
+
+    // Motivational / general
+    if (lowerMessage.includes('motivat') || lowerMessage.includes('encourag') || lowerMessage.includes('good job') || lowerMessage.includes('proud')) {
+      if (streak >= 7) return `🔥 ${streak}-day streak! That's serious consistency. Level ${level} and climbing. Keep protecting that streak — it's your superpower.`;
+      if (streak >= 3) return `Nice! ${streak} days in a row at Level ${level}. Momentum is real — one day at a time.`;
+      return `Every expert started as a beginner. Your Level ${level} journey with a ${streak}-day streak is building something real. What's the next small win?`;
+    }
+
+    // Default — context-aware
+    return `I'm your DeadlineHero AI! Right now you have ${pending} pending task${pending === 1 ? '' : 's'} and ${upcoming} deadline${upcoming === 1 ? '' : 's'} this week (streak: ${streak}, level: ${level}). Ask me about: planning your day, breaking down a task, checking risks, managing overwhelm, or your weekly progress. What helps most right now?`;
   }
 }
 
