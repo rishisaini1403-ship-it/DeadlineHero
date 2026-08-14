@@ -182,7 +182,10 @@ export const getHeatmap = async (req: AuthRequest, res: Response): Promise<void>
       const count = await Task.countDocuments({
         user: userId,
         status: 'completed',
-        updatedAt: { $gte: startOfDay, $lte: endOfDay },
+        $or: [
+          { updatedAt: { $gte: startOfDay, $lte: endOfDay } },
+          { createdAt: { $gte: startOfDay, $lte: endOfDay } },
+        ],
       });
 
       data.push({

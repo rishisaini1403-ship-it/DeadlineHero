@@ -11,6 +11,34 @@ const getHeatmapColor = (count: number) => {
   return "bg-green-600 dark:bg-green-400";
 };
 
+/**
+ * Generate heatmap weeks from heatmapDays ago to today.
+ * Uses millisecond-based computation (immune to month-boundary bugs).
+ * Returns weeks: {date: string; count: number}[][] [ [Sun{date,count}, Mon{date,count}, ...], ... ].
+ * GitHub-style heatmap: Sunday-start; confirmed by UI dayLabels ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].
+ */
+function generateHeatmapWeeks(heatmapDays: number) {
+  const today = new Date(); 
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today.getTime() - (heatmapDays - 1) * 86400000);
+  const startSunday = new Date(start.getTime() - start.getDay() * 86400000);
+  const nextSundayMs = today.getTime() + ((7 - today.getDay()) % 7) * 86400000;
+  const nextSunday = new Date(nextSundayMs);
+  const weeks: {date: string; count: number}[][] = [];
+  const weekMs = 7 * 86400000;
+  let curSunday = new Date(startSunday);
+  while (curSunday < nextSunday) {
+    const week: {date: string; count: number}[] = [];
+    for (let i = 0; i < 7; i++) {
+      week.push({ date: fmt(new Date(curSunday.getTime() + i * 86400000)), count: 0 });
+    }
+    weeks.push(week);
+    curSunday = new Date(curSunday.getTime() + weekMs);
+  }
+  return { weeks, start, today };
+}
+const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
 const Analytics: React.FC = () => {
   const { tasks, fetchTasks } = useTaskStore();
   const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
@@ -220,26 +248,16 @@ const Analytics: React.FC = () => {
                 if (heatmapData.length === 0 || heatmapData.reduce((s, d) => s + d.count, 0) === 0) {
                   return <div className="flex items-center justify-center py-6 text-center"><div><p className="text-sm text-gray-400 mb-1">No productivity data for this period.</p><p className="text-xs text-gray-300">Complete your first task to start building your graph.</p></div></div>;
                 }
-                const today = new Date();
-                const start = new Date(today);
-                start.setDate(start.getDate() - heatmapDays + 1);
-                const countMap: Record<string, number> = {};
-                heatmapData.forEach(d => { countMap[d.date] = d.count; });
-                const weeks: { date: string; count: number }[][] = [];
-                const cur = new Date(start);
-                cur.setDate(cur.getDate() - cur.getDay());
-                const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                while (weeks.length === 0 || cur <= today) {
-                  const week: { date: string; count: number }[] = [];
-                  for (let d = 0; d < 7; d++) {
-                    const ds = fmt(cur);
-                    week.push({ date: ds, count: countMap[ds] || 0 });
-                    cur.setDate(cur.getDate() + 1);
-                  }
-                  weeks.push(week);
-                  if (cur > today && cur.getDay() === 0) break;
-                }
-                const monthLabels: { label: string; col: number }[] = [];
+                const { weeks } = generateHeatmapWeeks(heatmapDays);
+                heatmapData.forEach(d => {
+                  weeks.forEach(week => {
+                    week.forEach(day => {
+                      if (day.date === d.date) day.count = d.count;
+});
+                });
+              });
+              console.log(JSON.stringify(weeks, null, 2));
+              const monthLabels: { label: string; col: number }[] = [];
                 const parseDate = (s: string) => { const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); };
                 weeks.forEach((w, i) => {
                   const fd = parseDate(w[0].date);
@@ -256,14 +274,14 @@ const Analytics: React.FC = () => {
                           return <div key={ci} className="text-[9px] text-gray-500 font-medium" style={{ width: 14, height: 14, lineHeight: "14px" }}>{ml ? ml.label : ""}</div>;
                         })}
                       </div>
-                      {[0, 2, 4].map(day => (
-                        <div key={day} className="flex items-center gap-[2px]">
-                          <span className="text-[9px] text-gray-500 w-7 text-right pr-1">{dayNames[day]}</span>
-                          {weeks.map((week, ci) => (
-                            <div key={`${ci}-${day}`} className={`${getHeatmapColor(week[day].count)} cursor-pointer transition-transform hover:scale-150`} style={{ width: 10, height: 10, borderRadius: 2, minWidth: 10 }}
-                              title={`${parseDate(week[day].date).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}\n${week[day].count} task${week[day].count !== 1 ? "s" : ""} completed`}
-                            ></div>
-                          ))}
+{Array.from({length: 7}, (_, i) => (
+                          <div key={i} className="flex items-center gap-[2px]">
+                            <span className="text-[9px] text-gray-500 w-7 text-right pr-1">{dayNames[i]}</span>
+                            {weeks.map((week, ci) => (
+                              <div key={`${ci}-{i}`} className={`${getHeatmapColor(week[i].count)} cursor-pointer transition-transform hover:scale-150`} style={{ width: 10, height: 10, borderRadius: 2, minWidth: 10 }}
+                                title={`${parseDate(week[i].date).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}\n${week[i].count} task${week[i].count !== 1 ? "s" : ""} completed`}
+                              ></div>
+                            ))}
                         </div>
                       ))}
                     </div>
