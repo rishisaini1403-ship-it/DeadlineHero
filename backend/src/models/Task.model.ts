@@ -23,6 +23,7 @@ export interface ITask extends Document {
     order: number;
   }>;
   isAIBrokenDown: boolean;
+  completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -109,6 +110,10 @@ const TaskSchema = new Schema<ITask>(
     isAIBrokenDown: {
       type: Boolean,
       default: false,
+    },
+    completedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

@@ -104,6 +104,16 @@ export const updateTask = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    // Handle completedAt timestamp
+    const newStatus = req.body.status;
+    if (newStatus !== undefined && newStatus !== task.status) {
+      if (newStatus === 'completed') {
+        task.completedAt = new Date();
+      } else if (task.status === 'completed') {
+        task.completedAt = null;
+      }
+    }
+
     // Award points if task is being completed
     if (req.body.status === 'completed' && task.status !== 'completed') {
       await gamificationService.addPoints(req.user._id.toString(), 20);
