@@ -42,7 +42,7 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
     const recentCompletions = await Task.countDocuments({
       user: userId,
       status: 'completed',
-      completedAt: { $gte: sevenDaysAgo },
+      updatedAt: { $gte: sevenDaysAgo },
     });
 
     // Upcoming deadlines
@@ -56,13 +56,13 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
     const completedTasksWithTime = await Task.find({
       user: userId,
       status: 'completed',
-      completedAt: { $gte: sevenDaysAgo },
+      updatedAt: { $gte: sevenDaysAgo },
     });
 
     let avgCompletionTime = 0;
     if (completedTasksWithTime.length > 0) {
       const totalTime = completedTasksWithTime.reduce((sum, task) => {
-        const timeDiff = task.completedAt ? task.completedAt.getTime() - task.createdAt.getTime() : 0;
+        const timeDiff = task.updatedAt.getTime() - task.createdAt.getTime();
         return sum + timeDiff;
       }, 0);
       avgCompletionTime = totalTime / completedTasksWithTime.length / (1000 * 60 * 60); // hours
@@ -121,7 +121,7 @@ export const getWeeklyProgress = async (req: AuthRequest, res: Response): Promis
       const completed = await Task.countDocuments({
         user: userId,
         status: 'completed',
-        completedAt: { $gte: startOfDay, $lte: endOfDay },
+        updatedAt: { $gte: startOfDay, $lte: endOfDay },
       });
 
       const created = await Task.countDocuments({
@@ -182,7 +182,10 @@ export const getHeatmap = async (req: AuthRequest, res: Response): Promise<void>
       const count = await Task.countDocuments({
         user: userId,
         status: 'completed',
-        completedAt: { $gte: startOfDay, $lte: endOfDay },
+        $or: [
+          { updatedAt: { $gte: startOfDay, $lte: endOfDay } },
+          { createdAt: { $gte: startOfDay, $lte: endOfDay } },
+        ],
       });
 
       data.push({
