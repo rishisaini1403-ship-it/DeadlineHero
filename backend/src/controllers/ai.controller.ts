@@ -340,7 +340,7 @@ export const activateEmergencyMode = async (req: AuthRequest, res: Response): Pr
 // AI Chat Assistant
 export const chatWithAI = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { message } = req.body;
+    const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 2000) : '';
 
     if (!message) {
       res.status(400).json({
@@ -350,31 +350,74 @@ export const chatWithAI = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // Get user context
-    const tasks = await Task.find({
-      user: req.user._id,
-      status: { $ne: 'completed' },
-    }).limit(10);
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const deadlines = await Deadline.find({
-      user: req.user._id,
-      status: 'upcoming',
-    }).limit(5);
+    // Build a rich, real-data context so the chatbot can answer concretely
+    const [tasks, deadlines, weeklyCompleted, weeklyMissed] = await Promise.all([
+      Task.find({
+        user: req.user._id,
+        status: { $ne: 'completed' },
+      })
+        .sort({ dueDate: 1 })
+        .limit(15),
+      Deadline.find({
+        user: req.user._id,
+        status: 'upcoming',
+      })
+        .sort({ dueDate: 1 })
+        .limit(8),
+      Task.countDocuments({
+        user: req.user._id,
+        status: 'completed',
+        updatedAt: { $gte: sevenDaysAgo },
+      }),
+      Task.countDocuments({
+        user: req.user._id,
+        dueDate: { $lt: now },
+        status: { $ne: 'completed' },
+      }),
+    ]);
 
     const context = {
-      pendingTasks: tasks.length,
-      upcomingDeadlines: deadlines.length,
-      userStreak: req.user.streak,
-      userLevel: req.user.level,
+      tasks: tasks.map(t => ({
+        _id: t._id,
+        title: t.title,
+        description: t.description,
+        priority: t.priority,
+        dueDate: t.dueDate,
+        estimatedHours: t.estimatedHours,
+        status: t.status,
+      })),
+      deadlines: deadlines.map(d => ({
+        title: d.title,
+        dueDate: d.dueDate,
+        status: d.status,
+      })),
+      user: {
+        streak: req.user.streak || 0,
+        level: req.user.level || 1,
+        points: req.user.points || 0,
+      },
+      weekly: {
+        completed: weeklyCompleted,
+        missed: weeklyMissed,
+      },
     };
 
-    const response = await aiService.generateChatResponse(message, context);
+    const response = await aiService.processChatMessage(message, context);
 
     res.status(200).json({
       success: true,
       data: {
         message: response,
-        context,
+        context: {
+          pendingTasks: tasks.length,
+          upcomingDeadlines: deadlines.length,
+          userStreak: req.user.streak || 0,
+          userLevel: req.user.level || 1,
+        },
       },
     });
   } catch (error: any) {
