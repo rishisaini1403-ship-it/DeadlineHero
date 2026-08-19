@@ -3,6 +3,7 @@ import Task from '../models/Task.model';
 import Deadline from '../models/Deadline.model';
 import User from '../models/User.model';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { buildUpcomingDeadlineContext } from '../services/ai.service';
 
 export const getAnalytics = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -45,12 +46,33 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
       updatedAt: { $gte: sevenDaysAgo },
     });
 
-    // Upcoming deadlines
-    const upcomingDeadlines = await Deadline.countDocuments({
-      user: userId,
-      status: 'upcoming',
-      dueDate: { $gte: new Date() },
-    });
+    // Upcoming deadlines (active tasks + deadline docs due within the next 7 days,
+    // deduplicated by IDs/relatedTasks — Task.dueDate is the primary source)
+    const now = new Date();
+    const windowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const [activeTasksInWeek, upcomingDeadlineDocs] = await Promise.all([
+      Task.find({
+        user: userId,
+        status: { $ne: 'completed' },
+        dueDate: { $gte: now, $lte: windowEnd },
+      })
+        .select('_id title dueDate status')
+        .lean(),
+      Deadline.find({
+        user: userId,
+        status: 'upcoming',
+      })
+        .select('_id title dueDate status relatedTasks')
+        .lean(),
+    ]);
+
+    const { total: upcomingDeadlines } = buildUpcomingDeadlineContext(
+      now,
+      activeTasksInWeek,
+      upcomingDeadlineDocs,
+      50
+    );
 
     // Average completion time
     const completedTasksWithTime = await Task.find({

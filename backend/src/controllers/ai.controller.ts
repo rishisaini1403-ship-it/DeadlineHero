@@ -2,7 +2,7 @@ import { Response } from 'express';
 import Task from '../models/Task.model';
 import Deadline from '../models/Deadline.model';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { aiService } from '../services/ai.service';
+import { aiService, buildUpcomingDeadlineContext } from '../services/ai.service';
 
 // Risk Predictor
 export const calculateRisk = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -179,10 +179,17 @@ export const checkBurnout = async (req: AuthRequest, res: Response): Promise<voi
       status: { $ne: 'completed' },
     });
 
-    const deadlines = await Deadline.find({
+    const deadlineDocs = await Deadline.find({
       user: req.user._id,
       status: 'upcoming',
     });
+
+    const { items: deadlineItems } = buildUpcomingDeadlineContext(
+      new Date(),
+      tasks,
+      deadlineDocs,
+      50
+    );
 
     const burnoutReport = await aiService.detectBurnout(
       tasks.map(t => ({
@@ -192,7 +199,7 @@ export const checkBurnout = async (req: AuthRequest, res: Response): Promise<voi
         estimatedHours: t.estimatedHours,
         title: t.title,
       })),
-      deadlines
+      deadlineItems
     );
 
     res.status(200).json({
@@ -309,10 +316,17 @@ export const activateEmergencyMode = async (req: AuthRequest, res: Response): Pr
       status: { $ne: 'completed' },
     }).sort({ dueDate: 1 });
 
-    const deadlines = await Deadline.find({
+    const deadlineDocs = await Deadline.find({
       user: req.user._id,
       status: 'upcoming',
     });
+
+    const { items: deadlineItems } = buildUpcomingDeadlineContext(
+      new Date(),
+      tasks,
+      deadlineDocs,
+      8
+    );
 
     const emergencyPlan = await aiService.activateEmergencyMode(
       tasks.map(t => ({
@@ -322,7 +336,7 @@ export const activateEmergencyMode = async (req: AuthRequest, res: Response): Pr
         estimatedHours: t.estimatedHours,
         title: t.title,
       })),
-      deadlines
+      deadlineItems
     );
 
     res.status(200).json({
@@ -353,21 +367,32 @@ export const chatWithAI = async (req: AuthRequest, res: Response): Promise<void>
     const now = new Date();
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const windowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    // Build a rich, real-data context so the chatbot can answer concretely
-    const [tasks, deadlines, weeklyCompleted, weeklyMissed] = await Promise.all([
+    // Build a rich, real-data context so the chatbot can answer concretely.
+    // Note: the deadline context uses a DEDICATED uncapped window query on
+    // Task.dueDate (primary source) — the limit(15) pending-task list below is
+    // only for the pending-task context and is never used to compute counts.
+    const [tasks, windowTasks, deadlineDocs, weeklyCompleted, weeklyMissed] = await Promise.all([
       Task.find({
         user: req.user._id,
         status: { $ne: 'completed' },
       })
         .sort({ dueDate: 1 })
         .limit(15),
+      Task.find({
+        user: req.user._id,
+        status: { $ne: 'completed' },
+        dueDate: { $gte: now, $lte: windowEnd },
+      })
+        .select('_id title dueDate status')
+        .lean(),
       Deadline.find({
         user: req.user._id,
         status: 'upcoming',
       })
-        .sort({ dueDate: 1 })
-        .limit(8),
+        .select('_id title dueDate status relatedTasks')
+        .lean(),
       Task.countDocuments({
         user: req.user._id,
         status: 'completed',
@@ -380,6 +405,13 @@ export const chatWithAI = async (req: AuthRequest, res: Response): Promise<void>
       }),
     ]);
 
+    const { items: deadlineItems, total: upcomingTotal } = buildUpcomingDeadlineContext(
+      now,
+      windowTasks,
+      deadlineDocs,
+      8
+    );
+
     const context = {
       tasks: tasks.map(t => ({
         _id: t._id,
@@ -390,10 +422,10 @@ export const chatWithAI = async (req: AuthRequest, res: Response): Promise<void>
         estimatedHours: t.estimatedHours,
         status: t.status,
       })),
-      deadlines: deadlines.map(d => ({
-        title: d.title,
-        dueDate: d.dueDate,
-        status: d.status,
+      deadlines: deadlineItems.map(i => ({
+        title: i.title,
+        dueDate: i.dueDate,
+        status: i.status,
       })),
       user: {
         streak: req.user.streak || 0,
@@ -414,7 +446,7 @@ export const chatWithAI = async (req: AuthRequest, res: Response): Promise<void>
         message: response,
         context: {
           pendingTasks: tasks.length,
-          upcomingDeadlines: deadlines.length,
+          upcomingDeadlines: upcomingTotal,
           userStreak: req.user.streak || 0,
           userLevel: req.user.level || 1,
         },

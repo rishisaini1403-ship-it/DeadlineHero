@@ -27,6 +27,93 @@ const DEMO_MODE =
   process.env.AI_DEMO_MODE === 'true' ||
   !(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your-gemini-api-key-here');
 
+// ==================== Upcoming Deadline Context ====================
+// Task.dueDate is the primary source of "upcoming deadline" data (matches the
+// Calendar). Separate Deadline documents are merged in only when they are not
+// already represented by a linked active Task. Deduplication uses real IDs
+// (Task._id / Deadline._id / Deadline.relatedTasks) — never titles.
+
+export interface UpcomingDeadlineItem {
+  id: string;
+  title: string;
+  dueDate: Date;
+  status: string;
+  source: 'task' | 'deadline';
+  taskId?: string;
+  deadlineId?: string;
+}
+
+interface DeadlineContextTask {
+  _id?: any;
+  title: string;
+  dueDate: Date;
+  status?: string;
+}
+
+interface DeadlineContextDoc {
+  _id?: any;
+  title: string;
+  dueDate: Date;
+  status?: string;
+  relatedTasks?: any[];
+}
+
+export function buildUpcomingDeadlineContext(
+  now: Date,
+  tasks: DeadlineContextTask[],
+  deadlines: DeadlineContextDoc[],
+  cap = 8
+): { items: UpcomingDeadlineItem[]; total: number } {
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  const inWindow = (d: Date) => {
+    const daysUntil = (new Date(d).getTime() - now.getTime()) / MS_PER_DAY;
+    return daysUntil >= 0 && daysUntil <= 7;
+  };
+
+  const items: UpcomingDeadlineItem[] = [];
+  const seen = new Set<string>();
+  const activeTaskIds = new Set<string>();
+
+  for (const t of tasks) {
+    if (t.status === 'completed' || !inWindow(t.dueDate)) continue;
+    const id = String(t._id);
+    activeTaskIds.add(id);
+    if (!seen.has(id)) {
+      seen.add(id);
+      items.push({
+        id,
+        title: t.title,
+        dueDate: new Date(t.dueDate),
+        status: t.status || 'pending',
+        source: 'task',
+        taskId: id,
+      });
+    }
+  }
+
+  for (const d of deadlines) {
+    if (d.status && d.status !== 'upcoming') continue;
+    if (!inWindow(d.dueDate)) continue;
+    const related = (d.relatedTasks || []).map((r: any) => String(r?._id ?? r));
+    if (related.some((rid) => activeTaskIds.has(rid))) continue;
+    const id = String(d._id);
+    if (!seen.has(id)) {
+      seen.add(id);
+      items.push({
+        id,
+        title: d.title,
+        dueDate: new Date(d.dueDate),
+        status: d.status || 'upcoming',
+        source: 'deadline',
+        deadlineId: id,
+      });
+    }
+  }
+
+  items.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  return { items: items.slice(0, cap), total: items.length };
+}
+
 // ==================== Type Definitions ====================
 
 interface TaskData {
@@ -308,6 +395,7 @@ Return JSON with taskId, title, reason, urgency, and estimatedImpact.`;
 Total Tasks: ${tasks.length}
 Upcoming Deadlines (7 days): ${deadlines.length}
 Tasks: ${JSON.stringify(tasks.map(t => ({ title: t.title, due: t.dueDate, hours: t.estimatedHours })))}
+Deadlines: ${JSON.stringify(deadlines.slice(0, 20).map(d => ({ title: d.title, due: d.dueDate, status: d.status })))}
 
 Return JSON with riskLevel, workloadScore, deadlinePressure, recommendations array, and suggestedBreak.`;
 
@@ -1104,7 +1192,7 @@ Respond in a friendly, concise, natural way (1-3 short paragraphs). Be specific 
   private mockBurnoutDetection(tasks: TaskData[], deadlines: any[]): BurnoutReport {
     const weekDeadlines = deadlines.filter(d => {
       const daysUntil = (new Date(d.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-      return daysUntil <= 7;
+      return daysUntil >= 0 && daysUntil <= 7;
     });
 
     const workloadScore = Math.min(100, (tasks.length * 5) + (weekDeadlines.length * 10));
