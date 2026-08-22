@@ -59,13 +59,17 @@ export const generateDailyPlan = async (req: AuthRequest, res: Response): Promis
   try {
     const { availableHours } = req.body;
     
+    // Fetch all active tasks, then sort by relevance and limit to 20
+    // Relevance: earliest dueDate, higher priority, in-progress status first
     const tasks = await Task.find({
       user: req.user._id,
       status: { $in: ['pending', 'in-progress'] },
     });
 
+    const sortedTasks = sortTasksByRelevance(tasks).slice(0, 20);
+
     const dailyPlan = await aiService.generateDailyPlan(
-      tasks.map(t => ({
+      sortedTasks.map(t => ({
         _id: t._id,
         dueDate: t.dueDate,
         priority: t.priority,
@@ -86,6 +90,25 @@ export const generateDailyPlan = async (req: AuthRequest, res: Response): Promis
     });
   }
 };
+
+// Sort tasks by relevance: earliest dueDate, higher priority, in-progress status first
+function sortTasksByRelevance(tasks: any[]): any[] {
+  const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+  const statusOrder = { 'in-progress': 2, pending: 1 };
+
+  return [...tasks].sort((a, b) => {
+    // Primary: earliest dueDate
+    const dueDiff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    if (dueDiff !== 0) return dueDiff;
+
+    // Secondary: higher priority
+    const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+    if (priorityDiff !== 0) return priorityDiff;
+
+    // Tertiary: in-progress status first
+    return (statusOrder[b.status] || 0) - (statusOrder[a.status] || 0);
+  });
+}
 
 // Task Breakdown
 export const breakdownTask = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -143,13 +166,17 @@ export const breakdownTask = async (req: AuthRequest, res: Response): Promise<vo
 // Next Action Recommendation
 export const getNextAction = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    // Fetch all active tasks, then sort by relevance and limit to 20
+    // Relevance: earliest dueDate, higher priority, in-progress status first
     const tasks = await Task.find({
       user: req.user._id,
       status: { $in: ['pending', 'in-progress'] },
     });
 
+    const sortedTasks = sortTasksByRelevance(tasks).slice(0, 20);
+
     const nextAction = await aiService.recommendNextAction(
-      tasks.map(t => ({
+      sortedTasks.map(t => ({
         _id: t._id,
         dueDate: t.dueDate,
         priority: t.priority,
@@ -191,8 +218,13 @@ export const checkBurnout = async (req: AuthRequest, res: Response): Promise<voi
       50
     );
 
+    // Sort by relevance and cap at 20 tasks for the Gemini prompt.
+    // NOTE: buildUpcomingDeadlineContext above intentionally keeps using the
+    // FULL task list so upcoming-deadline counts stay accurate.
+    const promptTasks = sortTasksByRelevance(tasks).slice(0, 20);
+
     const burnoutReport = await aiService.detectBurnout(
-      tasks.map(t => ({
+      promptTasks.map(t => ({
         _id: t._id,
         dueDate: t.dueDate,
         priority: t.priority,
@@ -328,8 +360,13 @@ export const activateEmergencyMode = async (req: AuthRequest, res: Response): Pr
       8
     );
 
+    // Sort by relevance and cap at 20 tasks for the Gemini prompt.
+    // NOTE: buildUpcomingDeadlineContext above intentionally keeps using the
+    // FULL task list so upcoming-deadline counts stay accurate.
+    const promptTasks = sortTasksByRelevance(tasks).slice(0, 20);
+
     const emergencyPlan = await aiService.activateEmergencyMode(
-      tasks.map(t => ({
+      promptTasks.map(t => ({
         _id: t._id,
         dueDate: t.dueDate,
         priority: t.priority,

@@ -324,9 +324,11 @@ Return JSON format only.`;
     }
 
     try {
+      // Safety cap: serialize at most 20 relevant tasks into the prompt
+      const promptTasks = tasks.slice(0, 20);
       const prompt = `Create an optimal daily schedule for these tasks:
 Available Hours: ${availableHours}
-Tasks: ${JSON.stringify(tasks.map(t => ({ title: t.title, hours: t.estimatedHours, priority: t.priority, due: t.dueDate })))}
+Tasks: ${JSON.stringify(promptTasks.map(t => ({ title: t.title, hours: t.estimatedHours, priority: t.priority, due: t.dueDate })))}
 
 Return a time-blocked schedule in JSON format.`;
 
@@ -369,9 +371,11 @@ Return JSON with subtasks array, each having title, description, estimatedHours,
     }
 
     try {
+      // Safety cap: serialize at most 20 relevant tasks into the prompt
+      const promptTasks = tasks.slice(0, 20);
       const prompt = `Based on these pending tasks, what should the user work on NEXT?
 Current Time: ${currentTime || new Date()}
-Tasks: ${JSON.stringify(tasks.map(t => ({ title: t.title, due: t.dueDate, priority: t.priority, hours: t.estimatedHours })))}
+Tasks: ${JSON.stringify(promptTasks.map(t => ({ title: t.title, due: t.dueDate, priority: t.priority, hours: t.estimatedHours })))}
 
 Return JSON with taskId, title, reason, urgency, and estimatedImpact.`;
 
@@ -391,10 +395,13 @@ Return JSON with taskId, title, reason, urgency, and estimatedImpact.`;
     }
 
     try {
+      // Safety cap: serialize at most 20 relevant tasks into the prompt.
+      // Total Tasks count intentionally reflects the full workload passed in.
+      const promptTasks = tasks.slice(0, 20);
       const prompt = `Analyze burnout risk based on:
 Total Tasks: ${tasks.length}
 Upcoming Deadlines (7 days): ${deadlines.length}
-Tasks: ${JSON.stringify(tasks.map(t => ({ title: t.title, due: t.dueDate, hours: t.estimatedHours })))}
+Tasks: ${JSON.stringify(promptTasks.map(t => ({ title: t.title, due: t.dueDate, hours: t.estimatedHours })))}
 Deadlines: ${JSON.stringify(deadlines.slice(0, 20).map(d => ({ title: d.title, due: d.dueDate, status: d.status })))}
 
 Return JSON with riskLevel, workloadScore, deadlinePressure, recommendations array, and suggestedBreak.`;
@@ -468,8 +475,10 @@ Return JSON with completedTasks, missedTasks, streak, productivityChange, achiev
     }
 
     try {
+      // Safety cap: serialize at most 20 relevant tasks into the prompt
+      const promptTasks = tasks.slice(0, 20);
       const prompt = `EMERGENCY MODE: User has critical deadlines approaching.
-Tasks: ${JSON.stringify(tasks.map(t => ({ title: t.title, due: t.dueDate, priority: t.priority, hours: t.estimatedHours })))}
+Tasks: ${JSON.stringify(promptTasks.map(t => ({ title: t.title, due: t.dueDate, priority: t.priority, hours: t.estimatedHours })))}
 
 Return JSON with prioritizedTasks array, studyPlan array, and criticalWarning.`;
 
