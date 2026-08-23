@@ -260,23 +260,45 @@ class AIService {
 
   // Parse Gemini JSON responses robustly (strips markdown fences if present)
   private parseGeminiJson(text: string): any {
-    let cleaned = text.trim();
-    const fence = /^```(?:json)?\s*([\s\S]*?)\s*```$/i;
-    const fenced = fence.exec(cleaned);
-    if (fenced) cleaned = fenced[1].trim();
+    try {
+      let cleaned = (text || '').trim();
+      const fence = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(cleaned);
+      if (fence) cleaned = fence[1].trim();
 
-    const obj = cleaned.match(/^\{[\s\S]*\}$/);
-    const arr = cleaned.match(/^\[[\s\S]*\]$/);
-    const jsonText = obj ? obj[0] : arr ? arr[0] : cleaned;
-
-    return JSON.parse(jsonText);
+      const obj = cleaned.match(/^\{[\s\S]*\}$/);
+      const arr = cleaned.match(/^\[[\s\S]*\]$/);
+      const jsonText = obj ? obj[0] : arr ? arr[0] : cleaned;
+      return JSON.parse(jsonText);
+    } catch (error) {
+      console.error('parseGeminiJson failed:', error);
+      return null;
+    }
   }
 
-  // Run a Gemini JSON request; throws on failure so callers can fall back to mocks
+  // Type guards used by all AI methods to prevent malformed Gemini responses
+  // (e.g., objects where strings are expected) from reaching React and
+  // triggering "Minified React error #31: Objects are not valid as a React child".
+  private isString(v: any): v is string { return typeof v === 'string'; }
+  private isNumber(v: any): v is number { return typeof v === 'number' && !Number.isNaN(v); }
+  private isOneOf(v: any, allowed: readonly string[]): boolean {
+    return typeof v === 'string' && allowed.includes(v);
+  }
+  private allStrings(v: any): boolean {
+    return Array.isArray(v) && v.every((x) => typeof x === 'string');
+  }
+
+  // Run a Gemini JSON request; returns null on parse failure so callers can
+  // fall back to mocks when their !result validation triggers
   private async generateJson(prompt: string): Promise<any> {
+    const tStart = Date.now();
+    const promptTokens = Math.ceil((prompt || '').length / 4);
+    console.log(`[AI][generateJson] START prompt~${promptTokens}toks model=${GEMINI_MODEL}`);
+
     const client = await getGeminiClient();
     if (!client) throw new Error('Gemini client not configured');
+    console.log(`[AI][generateJson] client_ready in ${Date.now() - tStart}ms`);
 
+    const tGemini = Date.now();
     const response = await this.withTimeout(
       client.models.generateContent({
         model: GEMINI_MODEL,
@@ -285,7 +307,11 @@ class AIService {
       }),
       30000
     );
-    return this.parseGeminiJson(response.text || '');
+    console.log(`[AI][generateJson] GEMINI_RETURNED in ${Date.now() - tGemini}ms responseLen=${(response.text || '').length}`);
+
+    const parsed = this.parseGeminiJson(response.text || '');
+    console.log(`[AI][generateJson] TOTAL ${Date.now() - tStart}ms parsed=${parsed ? 'ok' : 'null'}`);
+    return parsed;
   }
 
   // ========== Core AI Methods ==========
@@ -307,7 +333,13 @@ Provide a risk score (0-100), risk level (low/medium/high/critical), key factors
 Return JSON format only.`;
 
       const result = await this.generateJson(prompt);
-      if (!result || typeof result.riskScore !== 'number' || !Array.isArray(result.factors)) {
+      if (
+        !result ||
+        typeof result.riskScore !== 'number' ||
+        !this.isOneOf(result.riskLevel, ['low', 'medium', 'high', 'critical']) ||
+        !this.allStrings(result.factors) ||
+        !this.isString(result.recommendation)
+      ) {
         throw new Error('Malformed risk prediction response');
       }
       return result as RiskPrediction;
@@ -333,7 +365,17 @@ Tasks: ${JSON.stringify(promptTasks.map(t => ({ title: t.title, hours: t.estimat
 Return a time-blocked schedule in JSON format.`;
 
       const result = await this.generateJson(prompt);
-      if (!Array.isArray(result)) throw new Error('Malformed daily plan response');
+      if (
+        !Array.isArray(result) ||
+        !result.every(
+          (it) =>
+            this.isString(it?.title) &&
+            this.isNumber(it?.estimatedHours) &&
+            this.isString(it?.priority)
+        )
+      ) {
+        throw new Error('Malformed daily plan response');
+      }
       return result as ScheduleItem[];
     } catch (error) {
       console.error('Gemini API Error:', error);
@@ -356,7 +398,17 @@ Total Estimated Hours: ${estimatedHours}
 Return JSON with subtasks array, each having title, description, estimatedHours, and order.`;
 
       const result = await this.generateJson(prompt);
-      if (!result || !Array.isArray(result.subtasks)) throw new Error('Malformed task breakdown response');
+      if (
+        !result ||
+        !Array.isArray(result.subtasks) ||
+        !result.subtasks.every(
+          (s: any) =>
+            this.isString(s?.title) &&
+            (typeof s?.description === 'string' || s?.description == null)
+        )
+      ) {
+        throw new Error('Malformed task breakdown response');
+      }
       return result as TaskBreakdown;
     } catch (error) {
       console.error('Gemini API Error:', error);
@@ -380,7 +432,15 @@ Tasks: ${JSON.stringify(promptTasks.map(t => ({ title: t.title, due: t.dueDate, 
 Return JSON with taskId, title, reason, urgency, and estimatedImpact.`;
 
       const result = await this.generateJson(prompt);
-      if (!result || typeof result.title !== 'string') throw new Error('Malformed next action response');
+      if (
+        !result ||
+        !this.isString(result.title) ||
+        !this.isString(result.reason) ||
+        !this.isString(result.estimatedImpact) ||
+        !this.isOneOf(result.urgency, ['low', 'medium', 'high', 'critical'])
+      ) {
+        throw new Error('Malformed next action response');
+      }
       return result as NextAction;
     } catch (error) {
       console.error('Gemini API Error:', error);
@@ -407,7 +467,14 @@ Deadlines: ${JSON.stringify(deadlines.slice(0, 20).map(d => ({ title: d.title, d
 Return JSON with riskLevel, workloadScore, deadlinePressure, recommendations array, and suggestedBreak.`;
 
       const result = await this.generateJson(prompt);
-      if (!result || typeof result.workloadScore !== 'number' || !Array.isArray(result.recommendations)) {
+      if (
+        !result ||
+        typeof result.workloadScore !== 'number' ||
+        !this.isNumber(result.deadlinePressure) ||
+        !this.isOneOf(result.riskLevel, ['low', 'medium', 'high', 'critical']) ||
+        !this.allStrings(result.recommendations) ||
+        !this.isString(result.suggestedBreak)
+      ) {
         throw new Error('Malformed burnout response');
       }
       return result as BurnoutReport;
@@ -437,7 +504,14 @@ Other Tasks: ${allTasks.length} tasks
 Return JSON with originalRisk, newRisk, impactOnOtherTasks array, workloadChange percentage, and recommendation.`;
 
       const result = await this.generateJson(prompt);
-      if (!result || typeof result.originalRisk !== 'number' || typeof result.newRisk !== 'number') {
+      if (
+        !result ||
+        typeof result.originalRisk !== 'number' ||
+        typeof result.newRisk !== 'number' ||
+        !this.allStrings(result.impactOnOtherTasks) ||
+        !this.isNumber(result.workloadChange) ||
+        !this.isString(result.recommendation)
+      ) {
         throw new Error('Malformed deadline simulation response');
       }
       return result as DeadlineSimulation;
@@ -460,7 +534,15 @@ ${JSON.stringify(stats)}
 Return JSON with completedTasks, missedTasks, streak, productivityChange, achievements array, insights, and nextWeekFocus.`;
 
       const result = await this.generateJson(prompt);
-      if (!result || typeof result.completedTasks !== 'number') throw new Error('Malformed weekly report response');
+      if (
+        !result ||
+        typeof result.completedTasks !== 'number' ||
+        !this.isString(result.insights) ||
+        !this.isString(result.nextWeekFocus) ||
+        !this.allStrings(result.achievements)
+      ) {
+        throw new Error('Malformed weekly report response');
+      }
       return result as WeeklyReport;
     } catch (error) {
       console.error('Gemini API Error:', error);
@@ -483,7 +565,20 @@ Tasks: ${JSON.stringify(promptTasks.map(t => ({ title: t.title, due: t.dueDate, 
 Return JSON with prioritizedTasks array, studyPlan array, and criticalWarning.`;
 
       const result = await this.generateJson(prompt);
-      if (!result || !Array.isArray(result.prioritizedTasks)) throw new Error('Malformed emergency plan response');
+      if (
+        !result ||
+        !Array.isArray(result.prioritizedTasks) ||
+        !this.allStrings(result.studyPlan) ||
+        !this.isString(result.criticalWarning) ||
+        !result.prioritizedTasks.every(
+          (t: any) =>
+            this.isString(t?.title) &&
+            this.isString(t?.reason) &&
+            this.isString(t?.timeAllocation)
+        )
+      ) {
+        throw new Error('Malformed emergency plan response');
+      }
       return result as EmergencyPlan;
     } catch (error) {
       console.error('Gemini API Error:', error);

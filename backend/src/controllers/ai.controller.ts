@@ -201,15 +201,16 @@ export const getNextAction = async (req: AuthRequest, res: Response): Promise<vo
 // Burnout Detection
 export const checkBurnout = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tasks = await Task.find({
-      user: req.user._id,
-      status: { $ne: 'completed' },
-    });
-
-    const deadlineDocs = await Deadline.find({
-      user: req.user._id,
-      status: 'upcoming',
-    });
+    const [tasks, deadlineDocs] = await Promise.all([
+      Task.find({
+        user: req.user._id,
+        status: { $ne: 'completed' },
+      }),
+      Deadline.find({
+        user: req.user._id,
+        status: 'upcoming',
+      }),
+    ]);
 
     const { items: deadlineItems } = buildUpcomingDeadlineContext(
       new Date(),
@@ -343,15 +344,16 @@ export const generateWeeklyReport = async (req: AuthRequest, res: Response): Pro
 // Emergency Mode
 export const activateEmergencyMode = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tasks = await Task.find({
-      user: req.user._id,
-      status: { $ne: 'completed' },
-    }).sort({ dueDate: 1 });
-
-    const deadlineDocs = await Deadline.find({
-      user: req.user._id,
-      status: 'upcoming',
-    });
+    const [tasks, deadlineDocs] = await Promise.all([
+      Task.find({
+        user: req.user._id,
+        status: { $ne: 'completed' },
+      }).sort({ dueDate: 1 }),
+      Deadline.find({
+        user: req.user._id,
+        status: 'upcoming',
+      }),
+    ]);
 
     const { items: deadlineItems } = buildUpcomingDeadlineContext(
       new Date(),
