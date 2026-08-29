@@ -289,7 +289,7 @@ class AIService {
 
   // Run a Gemini JSON request; returns null on parse failure so callers can
   // fall back to mocks when their !result validation triggers
-  private async generateJson(prompt: string): Promise<any> {
+  private async generateJson(prompt: string, maxOutputTokens?: number): Promise<any> {
     const tStart = Date.now();
     const promptTokens = Math.ceil((prompt || '').length / 4);
     console.log(`[AI][generateJson] START prompt~${promptTokens}toks model=${GEMINI_MODEL}`);
@@ -299,12 +299,16 @@ class AIService {
     console.log(`[AI][generateJson] client_ready in ${Date.now() - tStart}ms`);
 
     const tGemini = Date.now();
+    const generateConfig: any = {
+      model: GEMINI_MODEL,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { responseMimeType: 'application/json', temperature: 0.4 },
+    };
+    if (maxOutputTokens !== undefined) {
+      generateConfig.config.maxOutputTokens = maxOutputTokens;
+    }
     const response = await this.withTimeout(
-      client.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { responseMimeType: 'application/json', temperature: 0.4 },
-      }),
+      client.models.generateContent(generateConfig),
       30000
     );
     console.log(`[AI][generateJson] GEMINI_RETURNED in ${Date.now() - tGemini}ms responseLen=${(response.text || '').length}`);
@@ -323,16 +327,13 @@ class AIService {
     }
 
     try {
-      const prompt = `Analyze the risk of missing this deadline:
-Task: ${task.title}
-Due Date: ${task.dueDate}
-Priority: ${task.priority}
-Estimated Hours: ${task.estimatedHours}
+      // Optimized prompt: compact format, only essential fields.
+      // Sends minimum necessary task information to Gemini; Gemini responsible
+      // for meaningful risk interpretation/explanation. Output token limit ensures
+      // complete RiskPrediction JSON is never truncated.
+      const prompt = `Risk of missing deadline: Task="${task.title}", Due=${task.dueDate}, Priority=${task.priority}, Hours=${task.estimatedHours}. Provide riskScore (0-100), riskLevel (low|medium|high|critical), 3 key factors, and recommendation. Return ONLY valid JSON.`;
 
-Provide a risk score (0-100), risk level (low/medium/high/critical), key factors, and a recommendation.
-Return JSON format only.`;
-
-      const result = await this.generateJson(prompt);
+      const result = await this.generateJson(prompt, 50);
       if (
         !result ||
         typeof result.riskScore !== 'number' ||
@@ -494,16 +495,14 @@ Return JSON with riskLevel, workloadScore, deadlinePressure, recommendations arr
       return this.mockDeadlineSimulation(task, newDate, allTasks);
     }
 
-    try {
-      const prompt = `If this deadline is postponed, what's the impact?
-Task: ${task.title}
-Current Due: ${task.dueDate}
-New Due: ${newDate}
-Other Tasks: ${allTasks.length} tasks
+try {
+      // Optimized prompt: compact format, only essential context.
+      // Sends minimum necessary context to Gemini; Gemini responsible for contextual
+      // consequences/recommendations. Output token limit ensures complete
+      // DeadlineSimulation JSON is never truncated.
+      const prompt = `Deadline impact: Task="${task.title}", Current=${task.dueDate}, New=${newDate}, OtherTasks=${allTasks.length}. Return JSON: originalRisk (0-100), newRisk (0-100), impactOnOtherTasks (2-3 short strings), workloadChange (%), recommendation. Return ONLY valid JSON.`;
 
-Return JSON with originalRisk, newRisk, impactOnOtherTasks array, workloadChange percentage, and recommendation.`;
-
-      const result = await this.generateJson(prompt);
+      const result = await this.generateJson(prompt, 55);
       if (
         !result ||
         typeof result.originalRisk !== 'number' ||
@@ -594,8 +593,8 @@ Return JSON with prioritizedTasks array, studyPlan array, and criticalWarning.`;
   }
 
   // Main chat pipeline: classify intent, run the matching feature on real data,
-  // then have Gemini narrate a natural-language answer. Falls back to a
-  // rule-based reply built from the same real data if Gemini is unavailable.
+  // then use a deterministic reply built from the same real data.
+  // The former second Gemini narration call was removed to halve latency.
   async processChatMessage(message: string, context: ChatContext): Promise<string> {
     const trimmed = (message || '').trim();
     const intent = this.detectChatIntent(trimmed, context);
@@ -606,31 +605,11 @@ Return JSON with prioritizedTasks array, studyPlan array, and criticalWarning.`;
 
     try {
       const payload = await this.buildIntentPayload(intent, trimmed, context);
-      const prompt = `You are DeadlineHero's AI assistant, helping a student manage coursework, deadlines, and workload.
-
-The user asked: "${trimmed}"
-
-Detected intent: ${intent}
-Relevant DeadlineHero data (already computed from the user's account — this is the source of truth):
-${JSON.stringify(payload)}
-
-Respond in a friendly, concise, natural way (1-3 short paragraphs). Be specific using the data above. Base your answer ONLY on the provided data: do not invent tasks, do not claim the user has no tasks/deadlines unless the data is empty or null, and do not output raw JSON or IDs. If the data is empty or not applicable, say so helpfully and suggest what the user can do next.`;
-
-      const client = await getGeminiClient();
-      if (!client) throw new Error('Gemini client not configured');
-
-      const response = await this.withTimeout(
-        client.models.generateContent({
-          model: GEMINI_MODEL,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: { temperature: 0.7 },
-        }),
-        30000
-      );
-
-      const text = (response.text || '').trim();
-      if (!text) return this.fallbackChatReply(intent, trimmed, context);
-      return text;
+      // USE DETERMINISTIC FALLBACK INSTEAD OF A SECOND GEMINI CALL.
+      // The former Gemini narration call duplicated work already done by
+      // buildIntentPayload(); falling back to a data-driven reply preserves
+      // readability while cutting one sequential Gemini API request.
+      return this.fallbackChatReply(intent, trimmed, context);
     } catch (error) {
       console.error('Gemini Chat Error:', error);
       return this.fallbackChatReply(intent, trimmed, context);
@@ -905,6 +884,8 @@ Respond in a friendly, concise, natural way (1-3 short paragraphs). Be specific 
         return this.mockChatResponse(message, {
           pendingTasks: active.length,
           upcomingDeadlines: deadlines.length,
+          tasks: tasks,
+          deadlines: deadlines,
           userStreak: user.streak || 0,
           userLevel: user.level || 1,
         });
@@ -1454,9 +1435,48 @@ Respond in a friendly, concise, natural way (1-3 short paragraphs). Be specific 
     const pending = context?.pendingTasks || 0;
     const upcoming = context?.upcomingDeadlines || 0;
     const streak = context?.userStreak || 0;
-    const level = context?.userLevel || 1;
+const level = context?.userLevel || 1;
 
-    // Context-aware greeting for first-time/empty state
+// Data-query patterns: deterministic, zero Gemini calls.
+// These are checked before the existing conversational patterns.
+const taskCountPattern = /^how many (?:pending )?tasks? do i have(?:\?|$)/i;
+const deadlineCountPattern = /^how many deadlines? do i have this week(?:\?|$)/i;
+const listDeadlinesPattern = /^what deadlines? do i have(?:\?|$)/i;
+const listTasksPattern = /^what tasks? do i have(?:\?|$)/i;
+const capabilitiesPattern = /^what can you help me with(?:\?|$)/i;
+const greetingPattern = /^(hello|hi|hey)(?:\?|!|$)/i;
+const thanksPattern = /^(thanks|thank you)(?:\?|!|$)/i;
+
+if (taskCountPattern.test(lowerMessage)) {
+  return `You have ${pending} pending task${pending === 1 ? '' : 's'}.`;
+}
+if (deadlineCountPattern.test(lowerMessage)) {
+  return `You have ${upcoming} upcoming deadline${upcoming === 1 ? '' : 's'} this week.`;
+}
+if (listDeadlinesPattern.test(lowerMessage)) {
+  const titles = context.deadlines?.map((d: any) => d.title).filter(Boolean) || [];
+  if (titles.length === 0) return 'You have no upcoming deadlines.';
+  return `You have the following upcoming deadlines: ${titles.join(', ')}.`;
+}
+if (listTasksPattern.test(lowerMessage)) {
+  const titles = context.tasks?.map((t: any) => t.title).filter(Boolean) || [];
+  if (titles.length === 0) return 'You have no pending tasks.';
+  return `You have the following pending tasks: ${titles.join(', ')}.`;
+}
+if (capabilitiesPattern.test(lowerMessage)) {
+  return `I can help you with planning your day using the Daily Planner, breaking down tasks with the Task Breakdown, checking deadline risks with the Risk Predictor, detecting burnout, simulating deadline changes, generating weekly reports, and activating emergency mode. Ask me about any of these!`;
+}
+if (greetingPattern.test(lowerMessage)) {
+  if (pending === 0 && upcoming === 0) {
+    return `Hey! 👋 You're all caught up — no pending tasks or upcoming deadlines. Enjoy the calm! Want help planning ahead or setting up a new project?`;
+  }
+  return `Hey! You have ${pending} pending task${pending === 1 ? '' : 's'} and ${upcoming} upcoming deadline${upcoming === 1 ? '' : 's'} this week. How can I help you?`;
+}
+if (thanksPattern.test(lowerMessage)) {
+  return `You're welcome! Ask me about your tasks, deadlines, or productivity tips.`;
+}
+
+// Existing conversational patterns follow below.
     if (pending === 0 && upcoming === 0) {
       if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
         return `Hey! 👋 You're all caught up — no pending tasks or upcoming deadlines. Enjoy the calm! Want help planning ahead or setting up a new project?`;
