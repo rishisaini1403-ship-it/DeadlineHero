@@ -216,7 +216,7 @@ const checkBurnout = async (req, res) => {
       50
     );
 
-    // Sort by relevance and cap at 20 tasks for the Gemini prompt.
+    // Sort by relevance and cap at 20 tasks for the AI prompt.
     // NOTE: buildUpcomingDeadlineContext above intentionally keeps using the
     // FULL task list so upcoming-deadline counts stay accurate.
     const promptTasks = sortTasksByRelevance(tasks).slice(0, 20);
@@ -359,7 +359,7 @@ const activateEmergencyMode = async (req, res) => {
       8
     );
 
-    // Sort by relevance and cap at 20 tasks for the Gemini prompt.
+    // Sort by relevance and cap at 20 tasks for the AI prompt.
     // NOTE: buildUpcomingDeadlineContext above intentionally keeps using the
     // FULL task list so upcoming-deadline counts stay accurate.
     const promptTasks = sortTasksByRelevance(tasks).slice(0, 20);
@@ -399,6 +399,14 @@ const chatWithAI = async (req, res) => {
       });
       return;
     }
+
+    // Accept conversation history for conversational Groq responses (last 10 messages max)
+    const chatHistory = Array.isArray(req.body?.chatHistory)
+      ? req.body.chatHistory.slice(-10).map(m => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: String(m.content || '').slice(0, 500),
+        }))
+      : [];
 
     const now = new Date();
     const sevenDaysAgo = new Date(now);
@@ -474,7 +482,7 @@ const chatWithAI = async (req, res) => {
       },
     };
 
-    const response = await aiService.processChatMessage(message, context);
+    const response = await aiService.processChatMessage(message, context, chatHistory);
 
     res.status(200).json({
       success: true,
