@@ -22,52 +22,52 @@ const Dashboard = () => {
   const pct = totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 p-8">
       <div className="max-w-7xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-5xl font-bold text-gray-900 mb-2">Welcome back, {user?.name || "Hero"}! 👋</h1>
-              <p className="text-xl text-gray-600">Let's conquer your deadlines today! 🚀</p>
+              <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-2">Welcome back, {user?.name || "Hero"}! 👋</h1>
+              <p className="text-xl text-gray-600 dark:text-gray-400">Let's conquer your deadlines today! 🚀</p>
             </div>
             <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} style={{ willChange: "transform" }} className="text-8xl">🤖</motion.div>
           </div>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }} whileHover={{ scale: 1.05, rotate: 2 }} onClick={() => navigate("/tasks")} className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-200 relative overflow-hidden cursor-pointer hover:border-blue-400 transition-all">
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }} whileHover={{ scale: 1.05, rotate: 2 }} onClick={() => navigate("/tasks")} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border-2 border-blue-200 dark:border-blue-800 relative overflow-hidden cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 transition-all">
             <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} style={{ willChange: "transform" }} className="absolute -top-4 -right-4 text-6xl opacity-20">📝</motion.div>
             <div className="relative z-10">
-              <h3 className="text-lg font-semibold mb-2 text-gray-700">Total Tasks</h3>
+              <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Total Tasks</h3>
               <p className="text-5xl font-bold text-blue-600">{totalTasks}</p>
-              <p className="text-sm text-gray-500 mt-2">Click to view all →</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Click to view all →</p>
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} whileHover={{ scale: 1.05, rotate: -2 }} onClick={() => navigate("/tasks")} className="bg-white rounded-2xl shadow-lg p-6 border-2 border-green-200 relative overflow-hidden cursor-pointer hover:border-green-400 transition-all">
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} whileHover={{ scale: 1.05, rotate: -2 }} onClick={() => navigate("/tasks")} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border-2 border-green-200 dark:border-green-800 relative overflow-hidden cursor-pointer hover:border-green-400 dark:hover:border-green-600 transition-all">
             <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} style={{ willChange: "transform" }} className="absolute -top-4 -right-4 text-6xl opacity-20">✅</motion.div>
             <div className="relative z-10">
-              <h3 className="text-lg font-semibold mb-2 text-gray-700">Completed</h3>
+              <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Completed</h3>
               <p className="text-5xl font-bold text-green-600">{completed}</p>
-              <p className="text-sm text-gray-500 mt-2">View completed tasks →</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">View completed tasks →</p>
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} whileHover={{ scale: 1.05, rotate: 2 }} onClick={() => navigate("/tasks")} className="bg-white rounded-2xl shadow-lg p-6 border-2 border-yellow-200 relative overflow-hidden cursor-pointer hover:border-yellow-400 transition-all">
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} whileHover={{ scale: 1.05, rotate: 2 }} onClick={() => navigate("/tasks")} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border-2 border-yellow-200 dark:border-yellow-800 relative overflow-hidden cursor-pointer hover:border-yellow-400 dark:hover:border-yellow-600 transition-all">
             <motion.div animate={{ y: [0, -3, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} style={{ willChange: "transform" }} className="absolute -top-4 -right-4 text-6xl opacity-20">⏳</motion.div>
             <div className="relative z-10">
-              <h3 className="text-lg font-semibold mb-2 text-gray-700">Pending</h3>
+              <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Pending</h3>
               <p className="text-5xl font-bold text-yellow-600">{pending}</p>
-              <p className="text-sm text-gray-500 mt-2">View pending tasks →</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">View pending tasks →</p>
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} whileHover={{ scale: 1.05, rotate: -2 }} onClick={() => navigate("/analytics")} className="bg-white rounded-2xl shadow-lg p-6 border-2 border-orange-200 relative overflow-hidden cursor-pointer hover:border-orange-400 transition-all">
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} whileHover={{ scale: 1.05, rotate: -2 }} onClick={() => navigate("/analytics")} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border-2 border-orange-200 dark:border-orange-800 relative overflow-hidden cursor-pointer hover:border-orange-400 dark:hover:border-orange-600 transition-all">
             <motion.div animate={{ scale: [1, 1.08, 1], rotate: [0, 5, -5, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} style={{ willChange: "transform" }} className="absolute -top-4 -right-4 text-6xl opacity-20">🔥</motion.div>
             <div className="relative z-10">
-              <h3 className="text-lg font-semibold mb-2 text-gray-700">Streak</h3>
+              <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">Streak</h3>
               <p className="text-5xl font-bold text-orange-600">{streak}</p>
-              <p className="text-sm text-gray-500 mt-2">View analytics →</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">View analytics →</p>
             </div>
           </motion.div>
         </div>
@@ -146,20 +146,20 @@ const Dashboard = () => {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <motion.button whileHover={{ scale: 1.05, rotate: -2 }} whileTap={{ scale: 0.95 }} onClick={() => navigate("/tasks")} className="bg-white rounded-2xl shadow-lg p-6 border-2 border-purple-200 hover:border-purple-400 transition-all text-left">
+          <motion.button whileHover={{ scale: 1.05, rotate: -2 }} whileTap={{ scale: 0.95 }} onClick={() => navigate("/tasks")} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border-2 border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600 transition-all text-left">
             <div className="text-4xl mb-3">📝</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Add New Task</h3>
-            <p className="text-sm text-gray-600">Create a task to get started</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Add New Task</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Create a task to get started</p>
           </motion.button>
-          <motion.button whileHover={{ scale: 1.05, rotate: 2 }} whileTap={{ scale: 0.95 }} onClick={() => navigate("/focus-mode")} className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-200 hover:border-blue-400 transition-all text-left">
+          <motion.button whileHover={{ scale: 1.05, rotate: 2 }} whileTap={{ scale: 0.95 }} onClick={() => navigate("/focus-mode")} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border-2 border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 transition-all text-left">
             <div className="text-4xl mb-3">🎯</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Focus Mode</h3>
-            <p className="text-sm text-gray-600">Start a Pomodoro session</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Focus Mode</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Start a Pomodoro session</p>
           </motion.button>
-          <motion.button whileHover={{ scale: 1.05, rotate: -2 }} whileTap={{ scale: 0.95 }} onClick={() => navigate("/ai-assistant")} className="bg-white rounded-2xl shadow-lg p-6 border-2 border-green-200 hover:border-green-400 transition-all text-left">
+          <motion.button whileHover={{ scale: 1.05, rotate: -2 }} whileTap={{ scale: 0.95 }} onClick={() => navigate("/ai-assistant")} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border-2 border-green-200 dark:border-green-800 hover:border-green-400 dark:hover:border-green-600 transition-all text-left">
             <div className="text-4xl mb-3">🤖</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">AI Assistant</h3>
-            <p className="text-sm text-gray-600">Get smart recommendations</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">AI Assistant</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Get smart recommendations</p>
           </motion.button>
         </motion.div>
       </div>

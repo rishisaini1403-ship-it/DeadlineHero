@@ -1,20 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+const POMODORO_STORAGE_KEY = 'deadlineHero_pomodoroSettings';
+
+const calculateBreakDuration = (studyMinutes) => {
+  return Math.min(20, Math.max(5, Math.round(studyMinutes / 4)));
+};
+
+const loadPomodoroSettings = () => {
+  try {
+    const saved = localStorage.getItem(POMODORO_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (typeof parsed.studyMinutes === 'number' && parsed.studyMinutes >= 20) {
+        const study = parsed.studyMinutes;
+        return { studyMinutes: study, breakMinutes: calculateBreakDuration(study) };
+      }
+    }
+  } catch {}
+  return { studyMinutes: 25, breakMinutes: 6 };
+};
 
 const FocusMode = () => {
   const navigate = useNavigate();
-  
+
+  const settings = useMemo(() => loadPomodoroSettings(), []);
+  const WORK_TIME = settings.studyMinutes * 60;
+  const BREAK_TIME = settings.breakMinutes * 60;
+
   // Timer state
-  const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(WORK_TIME);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
-  
+
   // Sound notification
   const [showNotification, setShowNotification] = useState(false);
-
-  const WORK_TIME = 25 * 60;
-  const BREAK_TIME = 5 * 60;
 
   useEffect(() => {
     let interval = null;
@@ -187,11 +208,11 @@ const FocusMode = () => {
           <h3 className="text-xl font-bold mb-4">📖 How it works:</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-white/5 rounded-lg">
-              <p className="text-2xl font-bold text-blue-300">25 min</p>
+              <p className="text-2xl font-bold text-blue-300">{settings.studyMinutes} min</p>
               <p className="text-sm text-white/70">Focused Work</p>
             </div>
             <div className="p-4 bg-white/5 rounded-lg">
-              <p className="text-2xl font-bold text-green-300">5 min</p>
+              <p className="text-2xl font-bold text-green-300">{settings.breakMinutes} min</p>
               <p className="text-sm text-white/70">Short Break</p>
             </div>
           </div>
@@ -203,16 +224,16 @@ const FocusMode = () => {
         {/* Notification Overlay */}
         {showNotification && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white text-gray-900 p-8 rounded-2xl max-w-md text-center animate-bounce">
+            <div className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-8 rounded-2xl max-w-md text-center animate-bounce">
               <div className="text-6xl mb-4">
                 {isBreak ? '🎉' : '☕'}
               </div>
               <h2 className="text-3xl font-bold mb-2">
                 {isBreak ? 'Session Complete!' : 'Break Over!'}
               </h2>
-              <p className="text-lg text-gray-600">
+              <p className="text-lg text-gray-600 dark:text-gray-400">
                 {isBreak
-                  ? `Great job! Time for a 5-minute break.`
+                  ? `Great job! Time for a ${settings.breakMinutes}-minute break.`
                   : 'Break is over. Ready to focus again?'}
               </p>
             </div>

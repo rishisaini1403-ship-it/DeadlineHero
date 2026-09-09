@@ -102,41 +102,41 @@ const Tasks = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">✅ Tasks</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">✅ Tasks</h1>
           <div className="flex gap-2">
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-full text-sm font-medium">
               Total: {tasks.length}
             </span>
-            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 rounded-full text-sm font-medium">
               Completed: {tasks.filter((t) => t.status === "completed").length}
             </span>
-            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 rounded-full text-sm font-medium">
               Pending: {tasks.filter((t) => t.status !== "completed").length}
             </span>
           </div>
         </div>
 
         {/* Create Task Form */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <h2 className="text-xl font-semibold mb-4">➕ Create New Task</h2>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+          <h2 className="text-xl font-semibold mb-4 dark:text-white">➕ Create New Task</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Task Title *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Task Title *</label>
               <input className="input-field" placeholder="e.g., Complete DBMS Project" value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date *</label>
               <input type="datetime-local" className="input-field" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
               <textarea className="input-field" placeholder="Add details about this task..." value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority Level</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority Level</label>
               <select value={priority} onChange={(e) => setPriority(e.target.value)} className="input-field">
                 <option value="low">🟢 Low - Can wait</option>
                 <option value="medium">🟡 Medium - Normal priority</option>
@@ -145,11 +145,11 @@ const Tasks = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
               <input className="input-field" placeholder="e.g., Assignment, Project, Exam" value={category} onChange={(e) => setCategory(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Hours</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estimated Hours</label>
               <input type="number" className="input-field" min="0.5" step="0.5" value={estimatedHours === 0 ? "" : estimatedHours} onChange={(e) => { const v = e.target.value; setEstimatedHours(v === "" ? 0 : parseFloat(v) || 0); }} />
             </div>
           </div>
@@ -157,10 +157,10 @@ const Tasks = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Priority</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filter by Priority</label>
               <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className="input-field">
                 <option value="all">All Priorities</option>
                 <option value="urgent">🔴 Urgent</option>
@@ -170,7 +170,7 @@ const Tasks = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sort Pending By</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort Pending By</label>
               <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="input-field">
                 <option value="dueDate">Due Date</option>
                 <option value="priority">Priority</option>
@@ -191,22 +191,22 @@ const Tasks = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Pending Tasks Column */}
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <span className="w-3 h-3 bg-yellow-400 rounded-full"></span>
                 Pending Tasks ({pendingTasks.length})
               </h2>
               <div className="space-y-4">
                 {pendingTasks.length === 0 ? (
-                  <div className="bg-white p-8 rounded-lg shadow-md text-center">
+                  <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md text-center">
                     <div className="text-4xl mb-3">🎉</div>
-                    <p className="text-gray-500">No pending tasks!</p>
+                    <p className="text-gray-500 dark:text-gray-400">No pending tasks!</p>
                   </div>
                 ) : (
                   pendingTasks.map((task) => (
                     <div key={task._id}>
                       <TaskCard task={task} onDelete={handleDelete} onComplete={handleComplete} onUpdate={handleUpdate} />
                       {task.status !== "completed" && !task.isAIBrokenDown && Number(task.estimatedHours ?? 0) >= 3 && (
-                        <button onClick={() => handleBreakdown(task._id)} className="mt-1 px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-full text-xs font-medium transition-colors">
+                        <button onClick={() => handleBreakdown(task._id)} className="mt-1 px-3 py-1 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-800/60 text-purple-800 dark:text-purple-300 rounded-full text-xs font-medium transition-colors">
                           🔨 AI Breakdown
                         </button>
                       )}
@@ -218,15 +218,15 @@ const Tasks = () => {
 
             {/* Completed Tasks Column */}
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <span className="w-3 h-3 bg-green-400 rounded-full"></span>
                 Completed Tasks ({completedTasks.length})
               </h2>
               <div className="space-y-4">
                 {completedTasks.length === 0 ? (
-                  <div className="bg-white p-8 rounded-lg shadow-md text-center">
+                  <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md text-center">
                     <div className="text-4xl mb-3">📝</div>
-                    <p className="text-gray-500">No completed tasks yet. Start working!</p>
+                    <p className="text-gray-500 dark:text-gray-400">No completed tasks yet. Start working!</p>
                   </div>
                 ) : (
                   completedTasks.map((task) => (

@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 
 const priorityColors = {
-  urgent: "bg-red-100 text-red-800 border-red-300",
-  high: "bg-orange-100 text-orange-800 border-orange-300",
-  medium: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  low: "bg-green-100 text-green-800 border-green-300",
+  urgent: "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700",
+  high: "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-300 dark:border-orange-700",
+  medium: "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
+  low: "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700",
 };
 
 const priorityEmojis = {
@@ -35,7 +35,7 @@ const TaskCard = ({ task, onDelete, onComplete, onUpdate }) => {
 
   if (editing) {
     return (
-      <div className="bg-white p-4 rounded-lg shadow-md border-2 border-blue-300">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border-2 border-blue-300">
         <input
           className="input-field mb-2"
           value={editTitle}
@@ -71,7 +71,7 @@ const TaskCard = ({ task, onDelete, onComplete, onUpdate }) => {
           <button onClick={handleSaveEdit} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
             Save
           </button>
-          <button onClick={() => setEditing(false)} className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+          <button onClick={() => setEditing(false)} className="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500">
             Cancel
           </button>
         </div>
@@ -85,19 +85,19 @@ const TaskCard = ({ task, onDelete, onComplete, onUpdate }) => {
   );
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 hover:shadow-lg transition-shadow">
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border-l-4 border-blue-500 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-lg text-gray-900">{task.title}</h3>
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white">{task.title}</h3>
             <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${priorityColors[task.priority]}`}>
               {priorityEmojis[task.priority]} {task.priority.toUpperCase()}
             </span>
           </div>
           {task.description && (
-            <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{task.description}</p>
           )}
-          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
             <span>📅 {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
             {task.estimatedHours > 0 && <span>⏱ {task.estimatedHours}h</span>}
             {task.category && <span>📂 {task.category}</span>}
