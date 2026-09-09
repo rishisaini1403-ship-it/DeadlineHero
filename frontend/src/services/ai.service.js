@@ -41,8 +41,8 @@ const aiService = {
     return response.data.data;
   },
 
-  async chatWithAI(message) {
-    const response = await api.post('/ai/chat', { message });
+  async chatWithAI(message, chatHistory = []) {
+    const response = await api.post('/ai/chat', { message, chatHistory });
     return response.data.data;
   },
 };

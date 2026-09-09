@@ -36,7 +36,8 @@ const AIChatWidget = () => {
     setLoading(true);
 
     try {
-      const response = await aiService.chatWithAI(input);
+      const chatHistory = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+      const response = await aiService.chatWithAI(input, chatHistory);
       const assistantMessage = {
         role: 'assistant',
         content: response.message,
