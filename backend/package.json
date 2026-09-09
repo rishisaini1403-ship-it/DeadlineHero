@@ -2,12 +2,12 @@
   "name": "deadlinehero-backend",
   "version": "1.0.0",
   "description": "Backend API for DeadlineHero - AI-powered student productivity platform",
-  "main": "dist/index.js",
+  "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "lint": "eslint src --ext .ts",
+    "dev": "nodemon src/index.js",
+    "build": "node -e \"console.log('No build step needed — JS runs directly')\"",
+    "start": "node src/index.js",
+    "lint": "eslint src --ext .js",
     "test": "jest"
   },
   "keywords": [
@@ -36,20 +36,8 @@
     "resend": "^3.1.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/jest": "^29.5.10",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/morgan": "^1.9.9",
-    "@types/node": "^20.10.0",
-    "@types/node-cron": "^3.0.11",
-    "@typescript-eslint/eslint-plugin": "^6.13.0",
-    "@typescript-eslint/parser": "^6.13.0",
     "eslint": "^8.54.0",
     "jest": "^29.7.0",
-    "nodemon": "^3.1.14",
-    "ts-node": "^10.9.2",
-    "typescript": "5.9.3"
+    "nodemon": "^3.1.14"
   }
 }
