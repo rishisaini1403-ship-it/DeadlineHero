@@ -1,10 +1,29 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { FiUser, FiBell, FiHelpCircle, FiZap, FiSettings, FiCamera } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { authService } from '../services/auth.service';
+
+const POMODORO_STORAGE_KEY = 'deadlineHero_pomodoroSettings';
+
+const calculateBreakDuration = (studyMinutes) => {
+  return Math.min(20, Math.max(5, Math.round(studyMinutes / 4)));
+};
+
+const loadStudyDuration = () => {
+  try {
+    const saved = localStorage.getItem(POMODORO_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (typeof parsed.studyMinutes === 'number' && parsed.studyMinutes >= 20) {
+        return parsed.studyMinutes;
+      }
+    }
+  } catch {}
+  return 25;
+};
 
 const Settings = () => {
   const { theme, toggleTheme, accentColor, setAccentColor } = useTheme();
@@ -18,6 +37,9 @@ const Settings = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
+
+  const [studyMinutes, setStudyMinutes] = useState(() => loadStudyDuration());
+  const breakMinutes = useMemo(() => calculateBreakDuration(studyMinutes), [studyMinutes]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
@@ -79,6 +101,13 @@ const Settings = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const saveProductivity = () => {
+    const clamped = Math.min(120, Math.max(20, studyMinutes));
+    setStudyMinutes(clamped);
+    localStorage.setItem(POMODORO_STORAGE_KEY, JSON.stringify({ studyMinutes: clamped }));
+    toast.success('Productivity settings saved!');
   };
 
   const tabs = [
@@ -365,33 +394,46 @@ const Settings = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Default Study Session (minutes)
+                        Study Duration (minutes)
                       </label>
                       <input
                         type="number"
-                        defaultValue={25}
-                        min={5}
+                        value={studyMinutes}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val)) {
+                            setStudyMinutes(Math.max(20, Math.min(120, val)));
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (isNaN(val) || val < 20) setStudyMinutes(20);
+                        }}
+                        min={20}
                         max={120}
                         step={5}
                         className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
                       />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Minimum 20 minutes</p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Default Break Time (minutes)
+                        Break Duration (minutes)
                       </label>
                       <input
-                        type="number"
-                        defaultValue={5}
-                        min={1}
-                        max={30}
-                        className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                        type="text"
+                        value={`${breakMinutes} minutes`}
+                        readOnly
+                        className="input-field bg-gray-100 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-600 cursor-not-allowed opacity-70"
                       />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Automatically calculated at a 4:1 study-to-break ratio
+                      </p>
                     </div>
 
                     <button
-                      onClick={() => toast.success('Productivity settings saved!')}
+                      onClick={saveProductivity}
                       className="btn-primary"
                     >
                       Save Preferences
@@ -422,7 +464,7 @@ const Settings = () => {
                         {[
                           { q: 'How do I use AI features?', a: 'Navigate to AI Assistant and explore the different tabs' },
                           { q: 'Can I export my data?', a: 'Yes! Use the export feature in Calendar or Tasks' },
-                          { q: 'How does Focus Mode work?', a: 'It uses the Pomodoro technique: 25 min work, 5 min break' },
+                          { q: 'How does Focus Mode work?', a: `It uses the Pomodoro technique: ${studyMinutes} min work, ${breakMinutes} min break` },
                         ].map((faq, idx) => (
                           <details key={idx} className="group">
                             <summary className="cursor-pointer font-medium text-purple-700 dark:text-purple-400">
