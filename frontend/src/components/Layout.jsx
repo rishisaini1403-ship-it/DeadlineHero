@@ -39,9 +39,12 @@ const Layout = () => {
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors">
       <aside className="w-64 bg-white dark:bg-gray-800 shadow-lg p-5">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity cursor-pointer"
+          >
             DeadlineHero
-          </h1>
+          </button>
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
