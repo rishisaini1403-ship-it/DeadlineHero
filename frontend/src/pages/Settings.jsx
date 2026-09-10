@@ -71,6 +71,7 @@ const Settings = () => {
   const fileInputRef = useRef(null);
 
   const [studyMinutes, setStudyMinutes] = useState(() => loadStudyDuration());
+  const [studyInput, setStudyInput] = useState(() => String(loadStudyDuration()));
   const breakMinutes = useMemo(() => calculateBreakDuration(studyMinutes), [studyMinutes]);
 
   const [cropModal, setCropModal] = useState({ open: false, imageSrc: null });
@@ -163,8 +164,10 @@ const Settings = () => {
   };
 
   const saveProductivity = () => {
-    const clamped = Math.min(120, Math.max(20, studyMinutes));
+    const val = parseInt(studyInput, 10);
+    const clamped = Math.min(120, Math.max(20, isNaN(val) ? 20 : val));
     setStudyMinutes(clamped);
+    setStudyInput(String(clamped));
     localStorage.setItem(POMODORO_STORAGE_KEY, JSON.stringify({ studyMinutes: clamped }));
     toast.success('Productivity settings saved!');
   };
@@ -457,16 +460,20 @@ const Settings = () => {
                       </label>
                       <input
                         type="number"
-                        value={studyMinutes}
+                        value={studyInput}
                         onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (!isNaN(val)) {
-                            setStudyMinutes(Math.max(20, Math.min(120, val)));
-                          }
+                          setStudyInput(e.target.value);
                         }}
                         onBlur={(e) => {
                           const val = parseInt(e.target.value, 10);
-                          if (isNaN(val) || val < 20) setStudyMinutes(20);
+                          if (isNaN(val) || val < 20) {
+                            setStudyMinutes(20);
+                            setStudyInput('20');
+                          } else {
+                            const clamped = Math.min(120, val);
+                            setStudyMinutes(clamped);
+                            setStudyInput(String(clamped));
+                          }
                         }}
                         min={20}
                         max={120}
