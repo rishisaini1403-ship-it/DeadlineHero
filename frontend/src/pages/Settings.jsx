@@ -1,8 +1,10 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
-import { FiUser, FiBell, FiHelpCircle, FiZap, FiSettings, FiCamera } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiUser, FiBell, FiHelpCircle, FiZap, FiSettings, FiCamera, FiX, FiZoomIn, FiZoomOut } from 'react-icons/fi';
+import Cropper from 'react-easy-crop';
 import toast from 'react-hot-toast';
 import { authService } from '../services/auth.service';
 
@@ -25,10 +27,40 @@ const loadStudyDuration = () => {
   return 25;
 };
 
+const createImage = (url) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.setAttribute('crossOrigin', 'anonymous');
+    image.src = url;
+  });
+
+const getCroppedImg = async (imageSrc, pixelCrop) => {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+  return canvas.toDataURL('image/jpeg', 0.9);
+};
+
 const Settings = () => {
+  const location = useLocation();
   const { theme, toggleTheme, accentColor, setAccentColor } = useTheme();
   const { user, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState(location.state?.tab || 'profile');
 
   const [name, setName] = useState(user?.name || '');
   const [avatar, setAvatar] = useState(user?.avatar || '');
@@ -39,7 +71,13 @@ const Settings = () => {
   const fileInputRef = useRef(null);
 
   const [studyMinutes, setStudyMinutes] = useState(() => loadStudyDuration());
+  const [studyInput, setStudyInput] = useState(() => String(loadStudyDuration()));
   const breakMinutes = useMemo(() => calculateBreakDuration(studyMinutes), [studyMinutes]);
+
+  const [cropModal, setCropModal] = useState({ open: false, imageSrc: null });
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
@@ -54,9 +92,31 @@ const Settings = () => {
     }
     const reader = new FileReader();
     reader.onload = () => {
-      setAvatar(reader.result);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCropModal({ open: true, imageSrc: reader.result });
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropApply = async () => {
+    try {
+      const croppedImage = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels);
+      setAvatar(croppedImage);
+      setCropModal({ open: false, imageSrc: null });
+      toast.success('Avatar updated! Click "Save Changes" to persist.');
+    } catch (err) {
+      toast.error('Failed to crop image');
+    }
+  };
+
+  const handleCropCancel = () => {
+    setCropModal({ open: false, imageSrc: null });
   };
 
   const saveProfile = async () => {
@@ -104,8 +164,10 @@ const Settings = () => {
   };
 
   const saveProductivity = () => {
-    const clamped = Math.min(120, Math.max(20, studyMinutes));
+    const val = parseInt(studyInput, 10);
+    const clamped = Math.min(120, Math.max(20, isNaN(val) ? 20 : val));
     setStudyMinutes(clamped);
+    setStudyInput(String(clamped));
     localStorage.setItem(POMODORO_STORAGE_KEY, JSON.stringify({ studyMinutes: clamped }));
     toast.success('Productivity settings saved!');
   };
@@ -398,16 +460,20 @@ const Settings = () => {
                       </label>
                       <input
                         type="number"
-                        value={studyMinutes}
+                        value={studyInput}
                         onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (!isNaN(val)) {
-                            setStudyMinutes(Math.max(20, Math.min(120, val)));
-                          }
+                          setStudyInput(e.target.value);
                         }}
                         onBlur={(e) => {
                           const val = parseInt(e.target.value, 10);
-                          if (isNaN(val) || val < 20) setStudyMinutes(20);
+                          if (isNaN(val) || val < 20) {
+                            setStudyMinutes(20);
+                            setStudyInput('20');
+                          } else {
+                            const clamped = Math.min(120, val);
+                            setStudyMinutes(clamped);
+                            setStudyInput(String(clamped));
+                          }
                         }}
                         min={20}
                         max={120}
@@ -484,6 +550,87 @@ const Settings = () => {
           </div>
         </div>
       </div>
+
+      {/* Avatar Crop Modal */}
+      <AnimatePresence>
+        {cropModal.open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={handleCropCancel}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Adjust Avatar</h3>
+                <button
+                  onClick={handleCropCancel}
+                  className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <FiX className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
+
+              {/* Crop Area */}
+              <div className="relative w-full h-80 bg-gray-900">
+                <Cropper
+                  image={cropModal.imageSrc}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={onCropComplete}
+                />
+              </div>
+
+              {/* Zoom Controls */}
+              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center space-x-3">
+                  <FiZoomOut className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  <input
+                    type="range"
+                    min={1}
+                    max={3}
+                    step={0.01}
+                    value={zoom}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <FiZoomIn className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                  Drag to position, use slider to zoom
+                </p>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={handleCropCancel}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCropApply}
+                  className="btn-primary"
+                >
+                  Apply
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
